@@ -1,1 +1,4 @@
 build
+.cache
+dependencies/Nui
+compile_commands.json

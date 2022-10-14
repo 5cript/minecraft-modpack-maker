@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(nui-template VERSION 0.1.0)
+project(minecraft-modpack-maker VERSION 0.1.0)
 
-# Nui Dependency
-include (${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/nui.cmake)
+add_subdirectory(dependencies/Nui)
 include (${CMAKE_CURRENT_LIST_DIR}/cmake/common_options.cmake)
 
 # Add executable (sources are added later, depending on frontend/backend)
@@ -45,5 +44,5 @@ else()
 			# VERBOSE=1
 	)
 
-	target_sources(${PROJECT_NAME} PRIVATE main.cpp)	
+	add_subdirectory(backend/source/backend)
 endif()

@@ -1,0 +1,49 @@
+@import "./variables.scss";
+@import "../../node_modules/bootstrap/scss/bootstrap.scss";
+
+$gap: 5px;
+$darker-bg: darken($body-bg, 5%);
+
+body {
+    background-color: $body-bg;
+    color: $body-color;
+}
+
+#openedPackBox {
+    background-color: $darker-bg;
+    color: $body-color;
+    width: calc(100% - calc(2 * $gap));
+    margin: $gap;
+    padding: $gap;
+    display: flex;
+    gap: $gap;
+    margin-bottom: calc(2 * $gap);
+}
+
+#openedPackLabel {
+    width: unset;
+    height: unset;
+}
+
+#packOpenButton {
+    min-width: 100px;
+    color: $body-color;
+}
+
+#packOptions {
+    background-color: $darker-bg;
+    color: $body-color;
+    width: calc(100% - calc(2 * $gap));
+    margin: $gap;
+    padding: $gap;
+    display: flex;
+    gap: $gap;
+    margin-bottom: 0px;
+}
+
+.boxed-input {
+    flex-grow: 1;
+    :not(label) {
+        background-color: $darker-bg;
+    }
+}
