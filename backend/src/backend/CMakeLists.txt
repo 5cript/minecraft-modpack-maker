@@ -1,6 +1,7 @@
 target_sources(${PROJECT_NAME} 
     PRIVATE 
         main.cpp 
+        filesystem.cpp
 )
 # if windows
 if(WIN32)

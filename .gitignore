@@ -1,4 +1,5 @@
 build
 .cache
+.vscode
 dependencies/Nui
 compile_commands.json

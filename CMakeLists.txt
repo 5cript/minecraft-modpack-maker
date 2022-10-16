@@ -19,11 +19,10 @@ if (EMSCRIPTEN)
 		PREJS
 			${CMAKE_CURRENT_SOURCE_DIR}/frontend/module.js
 		EMSCRIPTEN_LINK_OPTIONS
-			-sALLOW_MEMORY_GROWTH=1 # or other options, see emscripten docs.
+			-sASYNCIFY=1 -sALLOW_MEMORY_GROWTH=1 # or other options, see emscripten docs.
 	)
   
-	# Use this to add more source files based on frontend/backend build
-	target_sources(${PROJECT_NAME} PRIVATE frontend/frontend.cpp)
+    add_subdirectory(frontend/src/frontend)
 else()
     # Link backend of nui outside of emscripten
     target_link_libraries(${PROJECT_NAME} PRIVATE nui-backend)
@@ -44,5 +43,5 @@ else()
 			# VERBOSE=1
 	)
 
-	add_subdirectory(backend/source/backend)
+	add_subdirectory(backend/src/backend)
 endif()

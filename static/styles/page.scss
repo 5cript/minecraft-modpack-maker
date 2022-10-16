@@ -7,17 +7,18 @@ $darker-bg: darken($body-bg, 5%);
 body {
     background-color: $body-bg;
     color: $body-color;
+    display: flex;
+    flex-direction: column;
+    padding: $gap;
+    gap: $gap;
 }
 
 #openedPackBox {
     background-color: $darker-bg;
     color: $body-color;
-    width: calc(100% - calc(2 * $gap));
-    margin: $gap;
     padding: $gap;
     display: flex;
     gap: $gap;
-    margin-bottom: calc(2 * $gap);
 }
 
 #openedPackLabel {
@@ -33,12 +34,9 @@ body {
 #packOptions {
     background-color: $darker-bg;
     color: $body-color;
-    width: calc(100% - calc(2 * $gap));
-    margin: $gap;
     padding: $gap;
     display: flex;
     gap: $gap;
-    margin-bottom: 0px;
 }
 
 .boxed-input {
@@ -46,4 +44,35 @@ body {
     :not(label) {
         background-color: $darker-bg;
     }
+}
+
+#modTableArea {
+    flex-grow: 1;
+    padding: $gap;
+    background-color: $darker-bg;
+    isolation: isolate;
+}
+
+#modInputBox {
+    display: flex;
+    gap: 0px;
+}
+
+#modSearchInput {
+    min-width: 400px;
+}
+
+#modSearchButton {
+    border-radius: 0px;
+    height: 100%;
+}
+
+#modSearchOverlay {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    border: 1px solid black;
+    opacity: 70%;
+    background-color: black;
+    z-index: 1
 }

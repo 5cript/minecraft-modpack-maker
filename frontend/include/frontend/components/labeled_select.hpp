@@ -29,14 +29,21 @@ struct LabeledSelectArgs
     char const* label;
 };
 
-template <template <typename...> typename ContainerT, typename ValueType, typename PreSelect, typename OnSelect>
+template <
+    template <typename...>
+    typename ContainerT,
+    typename ValueType,
+    typename PreSelect,
+    typename OnSelect,
+    typename ReferencePasser>
 constexpr auto LabeledSelect(
     LabeledSelectArgs&& options,
     Nui::CustomAttribute<
         Nui::Observed<ContainerT<Nui::Components::SelectOptions<ValueType>>>&,
         Nui::Components::selectModelTag>&& selectModel,
-    PreSelect preSelect,
-    OnSelect onSelectFunc,
+    PreSelect&& preSelect,
+    OnSelect&& onSelectFunc,
+    ReferencePasser&& referencePasser,
     auto&&... selectArgs)
 {
     using namespace Nui::Elements;
@@ -52,6 +59,7 @@ constexpr auto LabeledSelect(
             std::move(selectModel),
             std::move(preSelect),
             std::move(onSelectFunc),
+            std::move(referencePasser),
             id = options.selectId,
             class_ = "form-select",
             std::forward<std::decay_t<decltype(selectArgs)>>(selectArgs)...
