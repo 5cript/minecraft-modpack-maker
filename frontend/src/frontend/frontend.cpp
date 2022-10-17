@@ -15,7 +15,9 @@
 #include <nui/frontend/elements/body.hpp>
 #include <nui/frontend/elements/button.hpp>
 #include <nui/frontend/elements/div.hpp>
+#include <nui/frontend/elements/img.hpp>
 #include <nui/frontend/elements/label.hpp>
+#include <nui/frontend/elements/span.hpp>
 
 // Attributes
 #include <nui/frontend/attributes/class.hpp>
@@ -25,6 +27,8 @@
 #include <nui/frontend/attributes/on_input.hpp>
 #include <nui/frontend/attributes/place_holder.hpp>
 #include <nui/frontend/attributes/read_only.hpp>
+#include <nui/frontend/attributes/src.hpp>
+#include <nui/frontend/attributes/style.hpp>
 #include <nui/frontend/attributes/type.hpp>
 
 // Components
@@ -37,6 +41,7 @@
 using namespace Nui;
 using namespace Nui::Elements;
 using namespace Nui::Attributes;
+using namespace Nui::Attributes::Literals;
 
 class MainPage
 {
@@ -117,6 +122,45 @@ class MainPage
         });
     }
 
+    void searchMatchingMods()
+    {
+        if (debouncedSearch_.typeOf().as<std::string>() == "undefined")
+        {
+            debouncedSearch_ = emscripten::val::global("_").call<emscripten::val>(
+                "debounce",
+                Nui::bind([this, &value = searchFieldValue_.value()]() {
+                    const auto results = Modrinth::Projects::search(Modrinth::Projects::SearchOptions{
+                        .query = value,
+                        .facets =
+                            {
+                                .versions = std::vector<std::string>{modPack_.minecraftVersion()},
+                                .categories = std::vector<std::string>{modPack_.modLoader()},
+                                .project_type = std::vector<std::string>{"mod"},
+                            },
+                    });
+                    if (results.code == 200)
+                    {
+                        {
+                            auto proxy = model_.searchHits.modify();
+                            proxy.value() = results.body->hits;
+                        }
+                        globalEventContext.executeActiveEventsImmediately();
+                    }
+                }),
+                500);
+        }
+        debouncedSearch_();
+    }
+
+    void onSelectSearchedMod(auto const& mod)
+    {
+        {
+            auto proxy = searchFieldValue_.modify();
+            proxy.value().clear();
+        }
+        globalEventContext.executeActiveEventsImmediately();
+    }
+
   public:
     auto render()
     {
@@ -135,7 +179,6 @@ class MainPage
                 });
             if (it != std::end(model_.availableMinecraftVersions.value()))
                 preselectMinecraftVersion = std::distance(std::begin(model_.availableMinecraftVersions.value()), it);
-            std::cout << "preselectMinecraftVersion: " << preselectMinecraftVersion << "\n";
         }
         if (!modPack_.modLoader().empty())
         {
@@ -147,7 +190,6 @@ class MainPage
                 });
             if (it != std::end(model_.availableModLoaders.value()))
                 preselectModLoader = std::distance(std::begin(model_.availableModLoaders.value()), it);
-            std::cout << "preselectModLoader: " << preselectModLoader << "\n";
         }
 
         // clang-format off
@@ -236,19 +278,10 @@ class MainPage
                             type = "text",
                             id = "modSearchInput",
                             placeHolder = "Enter a mod name",
+                            value = searchFieldValue_,
                             onInput = [this](emscripten::val event) {
-                                // clang-format on
-                                const auto value = event["target"]["value"].as<std::string>();
-                                const auto results = Modrinth::Projects::search(Modrinth::Projects::SearchOptions{
-                                    .query = value,
-                                    .facets =
-                                        {
-                                            .versions = std::vector<std::string>{modPack_.minecraftVersion()},
-                                            .categories = std::vector<std::string>{modPack_.modLoader()},
-                                            .project_type = std::vector<std::string>{"mod"},
-                                        },
-                                });
-                                // clang-format off
+                                searchFieldValue_ = event["target"]["value"].as<std::string>();
+                                searchMatchingMods();
                             }
                         }(),
                         button{
@@ -261,9 +294,39 @@ class MainPage
                         }("Add")
                     ),
                     div{
-                        id = "modSearchOverlay"
+                        id = "modSearchOverlay",
+                        style = Style{
+                            "visibility"_style = observe(searchFieldValue_).generate([this](){
+                                if (searchFieldValue_->empty())
+                                    return "hidden";
+                                else
+                                    return "visible";
+                            }),
+                        }
                     }(
-
+                        range(model_.searchHits),
+                        [this](auto i, auto const& hit) {
+                            return div{
+                                class_ = "mod-search-result",
+                                onClick = [this, hit](emscripten::val) {
+                                    onSelectSearchedMod(hit);
+                                }
+                            }(
+                                img {
+                                    src = hit.icon_url,
+                                    onClick = [this, hit](emscripten::val) {
+                                        onSelectSearchedMod(hit);
+                                    }
+                                }(),
+                                span{
+                                    onClick = [this, hit](emscripten::val) {
+                                        onSelectSearchedMod(hit);
+                                    }
+                                }(
+                                    hit.title
+                                )
+                            );
+                        }
                     )
                 )
             )
@@ -277,6 +340,8 @@ class MainPage
     ModPackManager modPack_;
     std::weak_ptr<Dom::BasicElement> minecraftVersionSelect_;
     std::weak_ptr<Dom::BasicElement> modLoaderSelect_;
+    emscripten::val debouncedSearch_;
+    Observed<std::string> searchFieldValue_;
 };
 
 void frontendMain()

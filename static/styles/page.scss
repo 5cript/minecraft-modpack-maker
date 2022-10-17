@@ -70,9 +70,29 @@ body {
 #modSearchOverlay {
     position: absolute;
     width: 400px;
-    height: 400px;
+    height: 430px;
     border: 1px solid black;
     opacity: 70%;
     background-color: black;
-    z-index: 1
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.mod-search-result {
+    display: flex;
+    gap: $gap;
+    margin: $gap;
+    align-items: center;
+}
+.mod-search-result img {
+    width: 32px;
+    height: 32px;
+}
+.mod-search-result span {
+    flex-grow: 1;
+}
+.mod-search-result span:hover {
+    color: $primary;
+    cursor: pointer;
 }

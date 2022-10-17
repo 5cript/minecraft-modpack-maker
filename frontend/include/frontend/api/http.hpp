@@ -1,5 +1,6 @@
 #pragma once
 
+#include <nui/frontend/api/console.hpp>
 #include <nui/frontend/utility/val_conversion.hpp>
 
 #include <emscripten/val.h>
@@ -25,6 +26,10 @@ namespace Http
         result.code = response["status"].as<int>();
         if (result.code == 200)
             Nui::convertFromVal(response.call<emscripten::val>("json").await(), result.body);
+        else if (result.code == 204)
+            result.body = std::nullopt;
+        else
+            Nui::Console::error("Response is not ok", response.call<emscripten::val>("text").await());
         return result;
     }
 }

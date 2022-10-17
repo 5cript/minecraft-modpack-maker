@@ -43,8 +43,9 @@ namespace Modrinth
                     result += ",";
                 result += "[";
                 for (auto const& element : vec)
-                    result += name + ":" + element + ",";
+                    result += "\""s + name + ":" + element + ",";
                 result.pop_back();
+                result += "\"";
                 result += "]";
             };
 
@@ -73,6 +74,14 @@ namespace Modrinth
                 result += key + "=" + value + "&";
             result.pop_back();
             return result;
+        }
+
+        template <typename T>
+        Http::Response<T> commonGetRequest(std::string const& url)
+        {
+            using namespace std::string_literals;
+            emscripten::val fetchOptions = prepareOptions();
+            return Http::get<T>(url, fetchOptions);
         }
     }
 }
@@ -110,24 +119,13 @@ namespace Modrinth::Projects
         queryParameters.emplace_back("limit"s, std::to_string(options.limit));
 
         const std::string query = assembleQuery(queryParameters);
-        std::cout << url("/search") + query << "\n";
         emscripten::val response = emscripten::val::global("fetch")(url("/search") + query, fetchOptions).await();
-
-        Console::log(response);
 
         Http::Response<SearchResult> result;
         result.code = response["status"].as<int>();
         if (result.code == 200)
             convertFromVal(response.call<emscripten::val>("json").await(), result.body);
         return result;
-    }
-
-    template <typename T>
-    Http::Response<T> commonGetRequest(std::string const& url)
-    {
-        using namespace std::string_literals;
-        emscripten::val fetchOptions = prepareOptions();
-        return Http::get<T>(url, fetchOptions);
     }
 
     Http::Response<Project> get(std::string const& idOrSlug)

@@ -19,7 +19,7 @@ if (EMSCRIPTEN)
 		PREJS
 			${CMAKE_CURRENT_SOURCE_DIR}/frontend/module.js
 		EMSCRIPTEN_LINK_OPTIONS
-			-sASYNCIFY=1 -sALLOW_MEMORY_GROWTH=1 # or other options, see emscripten docs.
+			-sASYNCIFY=1 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY_IMPORTS=['_emval_call_method'] # or other options, see emscripten docs.
 	)
   
     add_subdirectory(frontend/src/frontend)

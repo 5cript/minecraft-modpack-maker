@@ -12,8 +12,11 @@
 
     <!-- You have to import like this to achieve inlining of the script -->
     <script type="module" defer>
+        import _ from 'lodash';
         import * as bootstrap from "../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js";
         import "../bin/index.js";
+
+        globalThis._ = _;
     </script>
 </head>
 <body>
