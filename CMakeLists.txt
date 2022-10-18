@@ -18,12 +18,16 @@ if (EMSCRIPTEN)
 	nui_prepare_emscripten_target(
 		TARGET
 			minecraft-modpack-maker
+        PARCEL_ARGS
+            --no-optimize
 		PREJS
-			${CMAKE_CURRENT_SOURCE_DIR}/frontend/module.js
+			${CMAKE_CURRENT_SOURCE_DIR}/frontend/src/frontend/js/module.js
 		EMSCRIPTEN_LINK_OPTIONS
-            -sEXPORT_ALL=1
+            -O2 -sEXPORTED_FUNCTIONS=_main,_frontendMain -fno-inline-functions
             # or other options, see emscripten docs.
 			#-sALLOW_MEMORY_GROWTH=1 
+        EMSCRIPTEN_COMPILE_OPTIONS
+            -O3
 	)
   
     add_subdirectory(frontend/src/frontend)
@@ -39,19 +43,17 @@ else()
 	nui_add_emscripten_target(minecraft-modpack-maker
 		TARGET
 			minecraft-modpack-maker
-        PARCEL_NO_OPTIMIZE
-            on
-		PREJS 
-			${CMAKE_CURRENT_SOURCE_DIR}/frontend/module.js
+        PREJS
+            ${CMAKE_CURRENT_SOURCE_DIR}/frontend/src/frontend/js/module.js
 		SOURCE_DIR
 			${CMAKE_SOURCE_DIR}
 		CMAKE_OPTIONS
 			-DNUI_BUILD_EXAMPLES=off -DCMAKE_CXX_EXTENSIONS=on -DCMAKE_CXX_STANDARD=20
-            -DCMAKE_BUILD_TYPE=Debug
+            -DCMAKE_BUILD_TYPE=Release
             #"$<$<CONFIG:DEBUG>:-DCMAKE_BUILD_TYPE=Debug>"
             #"$<$<CONFIG:RELEASE>:-DCMAKE_BUILD_TYPE=Release>"
-		# MAKE_OPTIONS
-			# VERBOSE=1
+		MAKE_OPTIONS
+			VERBOSE=0
 	)
 
 	add_subdirectory(backend/src/backend)

@@ -55,10 +55,11 @@ class MainPage
   public:
     MainPage()
     {
-        loadConfig();
+        loadConfig([this]() {
+            openModPack();
+        });
         loadMinecraftVersions(false /*TODO: add option somewhere*/);
         loadModLoaders();
-        openModPack();
     }
 
   private:
@@ -113,17 +114,18 @@ class MainPage
             Console::log("Config was saved.");
         });
     }
-    void loadConfig()
+    void loadConfig(std::function<void()> onAfterLoad)
     {
-        ::loadConfig([this](Config&& cfg) {
+        ::loadConfig([this, onAfterLoad = std::move(onAfterLoad)](Config&& cfg) {
             {
-                // config_ = std::move(cfg);
-                auto proxy = config_.openPack.modify();
-                proxy.value() = cfg.openPack.value();
+                config_ = std::move(cfg);
+                // auto proxy = config_.openPack.modify();
+                // proxy.value() = cfg.openPack.value();
                 std::cout << "Attached Total: " << config_.openPack.totalAttachedEventCount() << "\n";
                 std::cout << "Config loaded: " << config_.openPack.value() << std::endl;
             }
             globalEventContext.executeActiveEventsImmediately();
+            onAfterLoad();
         });
     }
     void openModPack()
@@ -140,6 +142,7 @@ class MainPage
                 if (auto select = modLoaderSelect_.lock(); select)
                     select->val().set("value", modPack_.modLoader());
             }
+            std::cout << modPack_.mods().value().size() << " Mods loaded\n";
             globalEventContext.executeActiveEventsImmediately();
         });
     }
@@ -322,13 +325,7 @@ class MainPage
                             onClick = [](emscripten::val event) {
                                 std::cout << "on Mod Submit\n";
                             }
-                        }("Add"),
-                        span{}(
-                            observe(config_.openPack).generate([this]()  {
-                                std::cout << "openPack changed\n";	
-                                return config_.openPack.value().empty() ? "No pack opened" : "Pack opened: " + config_.openPack.value();
-                            })
-                        )
+                        }("Add")
                     ),
                     div{
                         id = "modSearchOverlay",
@@ -432,13 +429,13 @@ class MainPage
 };
 
 extern "C" {
-    void frontendMain()
+    void EMSCRIPTEN_KEEPALIVE frontendMain()
     {
         thread_local MainPage page;
         thread_local Dom::Dom dom;
         dom.setBody(page.render());
     }
-    int main(int argc, char* argv[])
+    int EMSCRIPTEN_KEEPALIVE main(int argc, char* argv[])
     {
         frontendMain();
         return 0;
