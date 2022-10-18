@@ -59,7 +59,12 @@ void ModPackManager::save()
     RpcClient::getRemoteCallableWithBackChannel("writeFile", [](emscripten::val response) {
         if (!response["success"].as<bool>())
             Console::error("Failed to save modpack");
-    })(modpackFile().string(), JSON::stringify(convertToVal(pack_)));
+    })(modpackFile().string(), JSON::stringify(convertToVal(pack_), 4));
+}
+//---------------------------------------------------------------------------------------------------------------------
+Nui::Observed<std::vector<Mod>> const& ModPackManager::mods() const
+{
+    return pack_.mods;
 }
 //---------------------------------------------------------------------------------------------------------------------
 std::filesystem::path ModPackManager::modpackFile() const

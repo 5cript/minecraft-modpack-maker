@@ -94,7 +94,8 @@ namespace Modrinth
             int total_hits;
         };
         BOOST_DESCRIBE_STRUCT(SearchResult, (), (hits, offset, limit, total_hits));
-        Http::Response<SearchResult> search(SearchOptions const& options);
+        void
+        search(SearchOptions const& options, std::function<void(Http::Response<SearchResult> const&)> const& callback);
 
         struct License
         {
@@ -164,14 +165,16 @@ namespace Modrinth
              status,
              license,
              versions));
-        Http::Response<Project> get(std::string const& idOrSlug);
+        void get(std::string const& idOrSlug, std::function<void(Http::Response<Project> const&)> const& callback);
 
         struct ProjectCheckStub
         {
             std::string id;
         };
         BOOST_DESCRIBE_STRUCT(ProjectCheckStub, (), (id));
-        Http::Response<ProjectCheckStub> check(std::string const& idOrSlug);
+        void check(
+            std::string const& idOrSlug,
+            std::function<void(Http::Response<ProjectCheckStub> const&)> const& callback);
 
         struct Dependency
         {
@@ -233,7 +236,9 @@ namespace Modrinth
         };
         BOOST_DESCRIBE_STRUCT(Dependencies, (), (projects, versions));
 
-        Http::Response<Dependencies> dependencies(std::string const& idOrSlug);
-        Http::Response<Version> version(std::string const& idOrSlug);
+        void dependencies(
+            std::string const& idOrSlug,
+            std::function<void(Http::Response<Dependencies> const&)> const& callback);
+        void version(std::string const& idOrSlug, std::function<void(Http::Response<Version> const&)> const& callback);
     }
 }

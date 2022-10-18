@@ -12,4 +12,5 @@ class FileSystem
     static void registerWriteFile(Nui::RpcHub const& hub);
     static void registerCreateDirectory(Nui::RpcHub const& hub);
     static void registerFileExists(Nui::RpcHub const& hub);
+    static void registerGetPackDevHome(Nui::RpcHub const& hub);
 };

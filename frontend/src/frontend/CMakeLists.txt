@@ -1,11 +1,13 @@
-target_sources(${PROJECT_NAME} 
+target_sources(minecraft-modpack-maker 
     PRIVATE 
         api/http.cpp
         api/minecraft.cpp
         api/modrinth.cpp
+        api/fetch.cpp
         frontend.cpp 
         modpack.cpp
         config.cpp
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/frontend/include)
+target_include_directories(minecraft-modpack-maker PRIVATE ${CMAKE_SOURCE_DIR}/backend/include)
+target_include_directories(minecraft-modpack-maker PRIVATE ${CMAKE_SOURCE_DIR}/frontend/include)

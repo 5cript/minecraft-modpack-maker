@@ -1,4 +1,5 @@
 #include <backend/filesystem.hpp>
+#include <nui/backend/filesystem/special_paths.hpp>
 #include <nui/backend/rpc_hub.hpp>
 
 #include <fstream>
@@ -9,6 +10,7 @@ void FileSystem::registerAll(Nui::RpcHub const& hub)
     registerWriteFile(hub);
     registerCreateDirectory(hub);
     registerFileExists(hub);
+    registerGetPackDevHome(hub);
 }
 void FileSystem::registerReadFile(Nui::RpcHub const& hub)
 {
@@ -84,6 +86,21 @@ void FileSystem::registerWriteFile(Nui::RpcHub const& hub)
                 return;
             }
         });
+}
+void FileSystem::registerGetPackDevHome(Nui::RpcHub const& hub)
+{
+    hub.registerFunction("getPackDevHome", [&hub](std::string const& responseId) {
+        const auto resolved = Nui::resolvePath("~/.mcpackdev");
+        if (!std::filesystem::exists(resolved))
+            std::filesystem::create_directory(resolved);
+
+        hub.callRemote(
+            responseId,
+            nlohmann::json{
+                {"success", true},
+                {"path", resolved.string()},
+            });
+    });
 }
 void FileSystem::registerCreateDirectory(Nui::RpcHub const& hub)
 {

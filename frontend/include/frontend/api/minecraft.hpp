@@ -32,5 +32,5 @@ namespace Minecraft
     };
     BOOST_DESCRIBE_STRUCT(VersionQueryResponse, (), (latest, versions))
 
-    Http::Response<VersionQueryResponse> getAllVersions();
+    void getAllVersions(std::function<void(Http::Response<VersionQueryResponse> const&)> const& callback);
 }

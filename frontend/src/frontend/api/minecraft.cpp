@@ -5,16 +5,17 @@ namespace Minecraft
     namespace
     {
         template <typename T>
-        Http::Response<T> commonGetRequest(std::string const& url)
+        void commonGetRequest(std::string const& url, std::function<void(Http::Response<T> const&)> const& callback)
         {
             using namespace std::string_literals;
-            emscripten::val fetchOptions = emscripten::val::object();
-            return Http::get<T>(url, fetchOptions);
+            auto fetchOptions = FetchOptions{};
+            Http::get<T>(url, fetchOptions, callback);
         }
     }
 
-    Http::Response<VersionQueryResponse> getAllVersions()
+    void getAllVersions(std::function<void(Http::Response<VersionQueryResponse> const&)> const& callback)
     {
-        return commonGetRequest<VersionQueryResponse>("https://launchermeta.mojang.com/mc/game/version_manifest.json");
+        commonGetRequest<VersionQueryResponse>(
+            "https://launchermeta.mojang.com/mc/game/version_manifest.json", callback);
     }
 }

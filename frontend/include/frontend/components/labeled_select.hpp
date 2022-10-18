@@ -4,7 +4,7 @@
 #include <nui/frontend/event_system/observed_value.hpp>
 
 // Elements
-#include <nui/frontend/elements/div.hpp>
+#include <nui/frontend/elements/form.hpp>
 #include <nui/frontend/elements/label.hpp>
 #include <nui/frontend/elements/option.hpp>
 #include <nui/frontend/elements/select.hpp>
@@ -51,7 +51,7 @@ constexpr auto LabeledSelect(
     using Nui::Elements::div;
 
     // clang-format off
-    return div{
+    return form{
         class_ = "form-floating boxed-input",
         id = options.boxId,
     }(

@@ -21,15 +21,12 @@ namespace Modrinth
         constexpr static char const* apiBaseUrl = "https://api.modrinth.com/v2";
 
         // Adds user agent etc:
-        emscripten::val prepareOptions()
+        FetchOptions prepareOptions()
         {
             using namespace std::string_literals;
 
-            emscripten::val options = emscripten::val::object();
-            emscripten::val headers = emscripten::val::global("Headers").new_();
-            headers.call<void>(
-                "append", "User-Agent"s, "github.com/5cript/minecraft-modpack-maker"s + "/" + MODMAKER_VERSION);
-            options.set("headers", headers);
+            FetchOptions options;
+            options.headers["User-Agent"] = "github.com/5cript/minecraft-modpack-maker"s + "/" + MODMAKER_VERSION;
             return options;
         }
 
@@ -77,23 +74,20 @@ namespace Modrinth
         }
 
         template <typename T>
-        Http::Response<T> commonGetRequest(std::string const& url)
+        void commonGetRequest(std::string const& url, std::function<void(Http::Response<T> const&)> const& callback)
         {
             using namespace std::string_literals;
-            emscripten::val fetchOptions = prepareOptions();
-            return Http::get<T>(url, fetchOptions);
+            const auto fetchOptions = prepareOptions();
+            Http::get<T>(url, fetchOptions, callback);
         }
     }
 }
 
 namespace Modrinth::Projects
 {
-    Http::Response<SearchResult> search(SearchOptions const& options)
+    void search(SearchOptions const& options, std::function<void(Http::Response<SearchResult> const&)> const& callback)
     {
         using namespace std::string_literals;
-
-        emscripten::val fetchOptions = prepareOptions();
-        fetchOptions.set("method", "GET"s);
 
         std::vector<std::pair<std::string, std::string>> queryParameters;
         queryParameters.emplace_back("query"s, options.query);
@@ -119,32 +113,29 @@ namespace Modrinth::Projects
         queryParameters.emplace_back("limit"s, std::to_string(options.limit));
 
         const std::string query = assembleQuery(queryParameters);
-        emscripten::val response = emscripten::val::global("fetch")(url("/search") + query, fetchOptions).await();
-
-        Http::Response<SearchResult> result;
-        result.code = response["status"].as<int>();
-        if (result.code == 200)
-            convertFromVal(response.call<emscripten::val>("json").await(), result.body);
-        return result;
+        const auto fetchOptions = prepareOptions();
+        Http::get<SearchResult>(url("/search") + query, fetchOptions, callback);
     }
 
-    Http::Response<Project> get(std::string const& idOrSlug)
+    void get(std::string const& idOrSlug, std::function<void(Http::Response<Project> const&)> const& callback)
     {
-        return commonGetRequest<Project>(url("/projects/" + idOrSlug));
+        return commonGetRequest<Project>(url("/projects/" + idOrSlug), callback);
     }
 
-    Http::Response<ProjectCheckStub> check(std::string const& idOrSlug)
+    void
+    check(std::string const& idOrSlug, std::function<void(Http::Response<ProjectCheckStub> const&)> const& callback)
     {
-        return commonGetRequest<ProjectCheckStub>(url("/projects/" + idOrSlug + "/check"));
+        return commonGetRequest<ProjectCheckStub>(url("/projects/" + idOrSlug + "/check"), callback);
     }
 
-    Http::Response<Dependencies> dependencies(std::string const& idOrSlug)
+    void
+    dependencies(std::string const& idOrSlug, std::function<void(Http::Response<Dependencies> const&)> const& callback)
     {
-        return commonGetRequest<Dependencies>(url("/projects/" + idOrSlug + "/dependencies"));
+        return commonGetRequest<Dependencies>(url("/projects/" + idOrSlug + "/dependencies"), callback);
     }
 
-    Http::Response<Version> version(std::string const& idOrSlug)
+    void version(std::string const& idOrSlug, std::function<void(Http::Response<Version> const&)> const& callback)
     {
-        return commonGetRequest<Version>(url("/projects/" + idOrSlug + "/version"));
+        return commonGetRequest<Version>(url("/projects/" + idOrSlug + "/version"), callback);
     }
 }

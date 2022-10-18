@@ -1,7 +1,7 @@
 #pragma once
 
 // Elements
-#include <nui/frontend/elements/div.hpp>
+#include <nui/frontend/elements/form.hpp>
 #include <nui/frontend/elements/label.hpp>
 
 // Attributes
@@ -30,7 +30,7 @@ constexpr auto LabeledTextInput(LabeledTextInputArgs&& options, auto&&... inputA
     using Nui::Elements::div;
 
     // clang-format off
-    return div{
+    return form{
         class_ = "form-floating boxed-input",
         id = options.boxId,
     }(

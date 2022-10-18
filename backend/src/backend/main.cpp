@@ -1,4 +1,5 @@
 #include <backend/executeable_path.hpp>
+#include <backend/fetch.hpp>
 #include <backend/filesystem.hpp>
 
 #include <nui/backend/rpc_hub.hpp>
@@ -35,6 +36,7 @@ int main(int argc, char** argv)
 
     RpcHub hub{window};
     FileSystem::registerAll(hub);
+    registerFetch(hub);
     hub.enableFileDialogs();
     window.run();
 }
