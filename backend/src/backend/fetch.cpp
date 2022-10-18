@@ -20,7 +20,6 @@ void registerFetch(Nui::RpcHub const& hub)
 {
     hub.registerFunction(
         "fetch", [&hub](std::string const& responseId, std::string const& url, FetchOptions const& options) {
-            std::cout << "backend fetch req recvd\n";
             std::string body;
             auto request = Roar::Curl::Request{};
 
@@ -41,7 +40,6 @@ void registerFetch(Nui::RpcHub const& hub)
                     .body = std::move(body),
                     .headers = std::move(headers)};
 
-                std::cout << "callRemote: " << responseId << "\n";
                 hub.callRemote(responseId, resp);
             };
             if (options.method == "GET")

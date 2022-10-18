@@ -60,6 +60,7 @@ class MainPage
         });
         loadMinecraftVersions(false /*TODO: add option somewhere*/);
         loadModLoaders();
+        window_.openDevTools();
     }
 
   private:
@@ -230,6 +231,14 @@ class MainPage
         return body{}(
             // Opened Pack
             div{
+                style = Style{
+                    "height"_style = "32px",
+                    "width"_style = "100%",
+                    "background-image"_style = "url(http://local/red_cross.2df44cf1.svg)",
+                }
+            }
+            (),
+            div{
                 id = "openedPackBox"
             }(
                 LabeledTextInput(
@@ -379,13 +388,15 @@ class MainPage
                     rowRenderer = [](auto i, auto const& mod) -> Nui::ElementRenderer{
                         return fragment(
                             td{}(
-                                button{
-                                    type = "button",
-                                    class_ = "btn btn-danger",
-                                    onClick = [mod](emscripten::val event) {
-                                        //mod->remove();
+                                div{
+                                    class_ = "remove-button",
+                                    style = Style{
+                                        "width"_style = "32px",
+                                        "height"_style = "32px"
                                     }
-                                }("Remove")
+                                }(
+
+                                )
                             ),
                             td{}(
                                 img{
@@ -419,6 +430,7 @@ class MainPage
     }
 
   private:
+    Window window_;
     MainPageModel model_;
     Config config_;
     ModPackManager modPack_;
