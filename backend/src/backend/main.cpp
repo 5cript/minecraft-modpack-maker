@@ -27,7 +27,7 @@ int main(int argc, char** argv)
     // const auto result = FileDialog::showOpenDialog({.title = "Hi"});
 
     Window window{"Minecraft Modpack Maker", true /* may open debug window */};
-    window.setSize(1600, 1000, WebViewHint::WEBVIEW_HINT_NONE);
+    window.setSize(1200, 800, WebViewHint::WEBVIEW_HINT_NONE);
     window.setHtml(index());
     // window.navigate(
     //     "file://"s +

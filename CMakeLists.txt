@@ -31,8 +31,6 @@ if (EMSCRIPTEN)
   
     add_subdirectory(frontend/src/frontend)
 else()
-    include (${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/roar.cmake)
-
     # Link backend of nui outside of emscripten
     target_link_libraries(minecraft-modpack-maker PRIVATE nui-backend roar)
 

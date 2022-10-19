@@ -8,8 +8,12 @@ IS_MSYS2_CLANG=off
 COMPILER=clang++
 CCOMPILER=clang
 LINKER=lld
-THREADS=1
+THREADS=${nproc}
 BUILD_TYPE=Debug
+
+if [[ ! -z "${MSYSTEM}" ]]; then
+  THREADS=1
+fi
 
 while getopts b:j: opts; do
    case ${opts} in

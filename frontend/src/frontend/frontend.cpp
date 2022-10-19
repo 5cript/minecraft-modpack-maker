@@ -60,7 +60,7 @@ class MainPage
         });
         loadMinecraftVersions(false /*TODO: add option somewhere*/);
         loadModLoaders();
-        window_.openDevTools();
+        // window_.openDevTools();
     }
 
   private:
@@ -234,7 +234,7 @@ class MainPage
                 style = Style{
                     "height"_style = "32px",
                     "width"_style = "100%",
-                    "background-image"_style = "url(http://local/red_cross.2df44cf1.svg)",
+                    "background-image"_style = "url(assets://local/red_cross.2df44cf1.svg)",
                 }
             }
             (),
