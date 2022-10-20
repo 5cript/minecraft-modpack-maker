@@ -2,7 +2,6 @@ target_sources(minecraft-modpack-maker
     PRIVATE 
         main.cpp 
         filesystem.cpp
-        fetch.cpp
 )
 # if windows
 if(WIN32)

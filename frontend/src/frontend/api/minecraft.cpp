@@ -8,7 +8,7 @@ namespace Minecraft
         void commonGetRequest(std::string const& url, std::function<void(Http::Response<T> const&)> const& callback)
         {
             using namespace std::string_literals;
-            auto fetchOptions = FetchOptions{};
+            auto fetchOptions = Nui::FetchOptions{};
             Http::get<T>(url, fetchOptions, callback);
         }
     }

@@ -6,8 +6,10 @@
 
 // Other Nui
 #include <nui/core.hpp>
+#include <nui/frontend/api/throttle.hpp>
 #include <nui/frontend/dom/dom.hpp>
 #include <nui/frontend/event_system/event_context.hpp>
+#include <nui/frontend/filesystem/file.hpp>
 #include <nui/frontend/filesystem/file_dialog.hpp>
 #include <nui/window.hpp>
 
@@ -55,12 +57,20 @@ class MainPage
   public:
     MainPage()
     {
-        loadConfig([this]() {
-            openModPack();
-        });
-        loadMinecraftVersions(false /*TODO: add option somewhere*/);
         loadModLoaders();
-        // window_.openDevTools();
+        loadConfig([this]() {
+            loadMinecraftVersions(false /*TODO: add option somewhere*/);
+        });
+
+        Nui::throttle(
+            500,
+            [this]() {
+                searchMatchingModsImpl();
+            },
+            [this](ThrottledFunction&& func) {
+                debouncedSearch_ = std::move(func);
+            },
+            true);
     }
 
   private:
@@ -96,6 +106,7 @@ class MainPage
                     });
             }
             globalEventContext.executeActiveEventsImmediately();
+            openModPack();
         });
     }
 
@@ -110,7 +121,6 @@ class MainPage
 
     void saveConfig()
     {
-        std::cout << "Saving config..." << std::endl;
         ::saveConfig(config_, [](bool success) {
             Console::log("Config was saved.");
         });
@@ -120,10 +130,6 @@ class MainPage
         ::loadConfig([this, onAfterLoad = std::move(onAfterLoad)](Config&& cfg) {
             {
                 config_ = std::move(cfg);
-                // auto proxy = config_.openPack.modify();
-                // proxy.value() = cfg.openPack.value();
-                std::cout << "Attached Total: " << config_.openPack.totalAttachedEventCount() << "\n";
-                std::cout << "Config loaded: " << config_.openPack.value() << std::endl;
             }
             globalEventContext.executeActiveEventsImmediately();
             onAfterLoad();
@@ -132,7 +138,6 @@ class MainPage
     void openModPack()
     {
         modPack_.open({config_.openPack.value()}, [this]() {
-            std::cout << "Modpack loaded." << std::endl;
             if (!modPack_.minecraftVersion().empty())
             {
                 if (auto select = minecraftVersionSelect_.lock(); select)
@@ -143,39 +148,39 @@ class MainPage
                 if (auto select = modLoaderSelect_.lock(); select)
                     select->val().set("value", modPack_.modLoader());
             }
-            std::cout << modPack_.mods().value().size() << " Mods loaded\n";
             globalEventContext.executeActiveEventsImmediately();
         });
     }
 
+    void searchMatchingModsImpl()
+    {
+        std::cout << modPack_.minecraftVersion() << "\n";
+
+        Modrinth::Projects::search(
+            Modrinth::Projects::SearchOptions{
+                .query = searchFieldValue_.value(),
+                .facets =
+                    {
+                        .versions = std::vector<std::string>{modPack_.minecraftVersion()},
+                        .categories = std::vector<std::string>{modPack_.modLoader()},
+                        .project_type = std::vector<std::string>{"mod"},
+                    },
+            },
+            [this](Http::Response<Modrinth::Projects::SearchResult> const& results) {
+                if (results.code == 200)
+                {
+                    {
+                        auto proxy = model_.searchHits.modify();
+                        proxy.value() = results.body->hits;
+                    }
+                    globalEventContext.executeActiveEventsImmediately();
+                }
+            });
+    }
+
     void searchMatchingMods()
     {
-        // if (debouncedSearch_.typeOf().as<std::string>() == "undefined")
-        // {
-        //     debouncedSearch_ = emscripten::val::global("_").call<emscripten::val>(
-        //         "debounce",
-        //         Nui::bind([this, &value = searchFieldValue_.value()]() {
-        //             const auto results = Modrinth::Projects::search(Modrinth::Projects::SearchOptions{
-        //                 .query = value,
-        //                 .facets =
-        //                     {
-        //                         .versions = std::vector<std::string>{modPack_.minecraftVersion()},
-        //                         .categories = std::vector<std::string>{modPack_.modLoader()},
-        //                         .project_type = std::vector<std::string>{"mod"},
-        //                     },
-        //             });
-        //             if (results.code == 200)
-        //             {
-        //                 {
-        //                     auto proxy = model_.searchHits.modify();
-        //                     proxy.value() = results.body->hits;
-        //                 }
-        //                 globalEventContext.executeActiveEventsImmediately();
-        //             }
-        //         }),
-        //         500);
-        // }
-        // debouncedSearch_();
+        debouncedSearch_();
     }
 
     void onSelectSearchedMod(auto const& searchHit)
@@ -262,8 +267,6 @@ class MainPage
                                 saveConfig();
                                 openModPack();
                             }
-                            else
-                                std::cout << "pack open canceled" << std::endl;
                         });
                     }
                 }("Open")
@@ -282,6 +285,7 @@ class MainPage
                     selectModel = model_.availableMinecraftVersions,
                     preSelect = preselectMinecraftVersion,
                     onSelect = [this](int index) {
+                        std::cout << "Setting minecraft version to: " << model_.availableMinecraftVersions.value()[index].value << "\n";
                         modPack_.minecraftVersion(model_.availableMinecraftVersions.value()[index].value);
                     },
                     selectReference = [this](std::weak_ptr<Dom::BasicElement>&& weak){
@@ -436,7 +440,7 @@ class MainPage
     ModPackManager modPack_;
     std::weak_ptr<Dom::BasicElement> minecraftVersionSelect_;
     std::weak_ptr<Dom::BasicElement> modLoaderSelect_;
-    emscripten::val debouncedSearch_;
+    ThrottledFunction debouncedSearch_;
     Observed<std::string> searchFieldValue_;
 };
 

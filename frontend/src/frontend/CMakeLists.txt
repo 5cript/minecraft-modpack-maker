@@ -3,7 +3,6 @@ target_sources(minecraft-modpack-maker
         api/http.cpp
         api/minecraft.cpp
         api/modrinth.cpp
-        api/fetch.cpp
         frontend.cpp 
         modpack.cpp
         config.cpp

@@ -50,7 +50,7 @@ else()
             #"$<$<CONFIG:DEBUG>:-DCMAKE_BUILD_TYPE=Debug>"
             #"$<$<CONFIG:RELEASE>:-DCMAKE_BUILD_TYPE=Release>"
 		MAKE_OPTIONS
-			VERBOSE=0
+			#VERBOSE=1
 	)
 
 	add_subdirectory(backend/src/backend)

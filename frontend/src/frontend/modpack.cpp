@@ -18,9 +18,7 @@ void ModPackManager::open(std::filesystem::path path, std::function<void()> onOp
         "readFile", [this, onOpen = std::move(onOpen)](emscripten::val response) {
             if (response["success"].as<bool>())
             {
-                Console::log(response);
                 convertFromVal<ModPack>(JSON::parse(response["data"]), pack_);
-                std::cout << pack_.mods.value().size() << std::endl;
 
                 std::sort(pack_.mods.begin(), pack_.mods.end(), [](Mod const& a, Mod const& b) {
                     return a.name < b.name;
