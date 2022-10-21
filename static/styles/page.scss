@@ -139,3 +139,57 @@ body {
     min-height: 32px;
     border-right: 1px solid $light;
 }
+
+.remove-button {
+    background-image: url("assets://assets/red_cross.svg");
+    background-repeat: no-repeat;
+    cursor: pointer;
+    display: inline-block;
+    width: 30px;
+    height: 32px;
+}
+.install-button {
+    background-image: url("assets://assets/up_arrow.png");
+    background-repeat: no-repeat;
+    cursor: pointer;
+    display: inline-block;
+    width: 30px;
+    height: 32px;
+}
+.table-cell {
+
+}
+.table-mod-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: $gap;
+}
+.not-installed-cell {
+    background-color: rgba(200 0 0 / 0.5);
+}
+.outdated-cell {
+    background-color: rgba(255 255 0 / 0.5);
+}
+.installed-cell {
+    background-color: rgba(0 255 0 / 0.5);
+}
+.page-dialog
+{
+    background: $body-bg;
+    color: $body-color;
+}
+.page-dialog form {
+    display: flex;
+    flex-direction: column;
+    gap: $gap;
+    align-items: left;
+}
+.page-dialog form menu button {
+    min-width: 150px;
+}
+.page-dialog form menu {
+    display: flex;
+    gap: $gap;
+    padding: 0px;
+    margin: 0px;
+}

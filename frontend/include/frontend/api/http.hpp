@@ -21,14 +21,21 @@ namespace Http
     };
 
     template <typename T>
-    void get(std::string const& url, Nui::FetchOptions options, std::function<void(Response<T> const&)> const& callback)
+    void
+    get(std::string const& url,
+        Nui::FetchOptions const& options,
+        std::function<void(Response<T> const&)> const& callback)
     {
-        options.method = "GET";
-        fetch(url, options, [callback = std::move(callback)](Nui::FetchResponse const& response) {
+        fetch(url, options, [callback = std::move(callback), options](Nui::FetchResponse const& response) {
             Http::Response<T> result;
             result.code = response.status;
             if (response.status == 200)
-                Nui::convertFromVal(Nui::JSON::parse(response.body), result.body);
+            {
+                if constexpr (std::is_same_v<T, std::string>)
+                    *result.body = response.body;
+                else
+                    Nui::convertFromVal(Nui::JSON::parse(response.body), result.body);
+            }
             else if (result.code == 204)
                 result.body = std::nullopt;
             else

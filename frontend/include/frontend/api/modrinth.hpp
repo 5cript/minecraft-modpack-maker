@@ -30,6 +30,8 @@ namespace Modrinth
         std::optional<std::vector<std::string>> project_type = std::nullopt;
     };
 
+    Nui::FetchOptions prepareOptions();
+
     namespace Projects
     {
         struct SearchOptions

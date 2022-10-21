@@ -41,6 +41,7 @@
 // Components
 #include <frontend/components/labeled_select.hpp>
 #include <frontend/components/labeled_text_input.hpp>
+#include <nui/frontend/components/dialog.hpp>
 #include <nui/frontend/components/select.hpp>
 #include <nui/frontend/components/table.hpp>
 
@@ -50,12 +51,32 @@
 using namespace Nui;
 using namespace Nui::Elements;
 using namespace Nui::Attributes;
+using namespace Nui::Components;
 using namespace Nui::Attributes::Literals;
 
 class MainPage
 {
   public:
     MainPage()
+        : window_{}
+        , model_{}
+        , config_{}
+        , modPack_{}
+        , minecraftVersionSelect_{}
+        , modLoaderSelect_{}
+        , debouncedSearch_{}
+        , searchFieldValue_{}
+        , dialog_{DialogController::ConstructionArgs{
+              .className = "page-dialog",
+              .title = "Please Confirm",
+              .body = "Are you sure you want to do this?",
+              .buttonClassName = "btn btn-primary",
+              .buttonConfiguration = DialogController::ButtonConfiguration::YesNo,
+              .onButtonClicked =
+                  [](DialogController::Button button) {
+                      std::cout << "Dialog opened without attached action!";
+                  },
+          }}
     {
         loadModLoaders();
         loadConfig([this]() {
@@ -74,6 +95,32 @@ class MainPage
     }
 
   private:
+    template <typename T, typename U>
+    void showYesNoDialog(std::string const& body, T&& onYesAction, U&& onNoAction)
+    {
+        dialog_.setOnButtonClicked(
+            [onYesAction = std::forward<T>(onYesAction), onNoAction = std::forward<U>(onNoAction)](auto button) {
+                switch (button)
+                {
+                    case (DialogController::Button::Yes):
+                        onYesAction();
+                        break;
+                    case (DialogController::Button::No):
+                        onNoAction();
+                        break;
+                    default:
+                        break;
+                }
+            });
+        dialog_.setBody(body);
+        dialog_.showModal();
+    }
+    template <typename T>
+    void showYesNoDialog(std::string const& body, T&& onYesAction)
+    {
+        showYesNoDialog(body, std::forward<T>(onYesAction), []() {});
+    }
+
     void loadMinecraftVersions(bool includeSnapshots)
     {
         Minecraft::getAllVersions([this, includeSnapshots](auto const& response) {
@@ -154,8 +201,6 @@ class MainPage
 
     void searchMatchingModsImpl()
     {
-        std::cout << modPack_.minecraftVersion() << "\n";
-
         Modrinth::Projects::search(
             Modrinth::Projects::SearchOptions{
                 .query = searchFieldValue_.value(),
@@ -185,20 +230,36 @@ class MainPage
 
     void onSelectSearchedMod(auto const& searchHit)
     {
-        modPack_.addMod({
-            .name = searchHit.title,
-            .id = searchHit.project_id,
-            .slug = searchHit.slug,
-            .installedName = "",
-            .installedTimestamp = "",
-            .logoPng64 = "", // TODO: download and save by icon_url
-            .datePublished = searchHit.date_modified // FIXME: this is probably not the correct date.
+        using namespace std::string_literals;
+
+        auto options = Modrinth::prepareOptions();
+        options.verbose = true;
+        options.followRedirects = true;
+        options.autoReferer = true;
+        options.dontDecodeBody = true;
+        Http::get<std::string>(searchHit.icon_url, options, [this, searchHit](auto const& response) {
+            std::cout << searchHit.icon_url << "\n";
+            modPack_.addMod({
+                .name = searchHit.title,
+                .id = searchHit.project_id,
+                .slug = searchHit.slug,
+                .installedName = "",
+                .installedTimestamp = "",
+                .logoPng64 = "data:image/png;base64,"s + *response.body,
+                .newestTimestamp = searchHit.date_modified // FIXME: this is probably not the correct date.
+            });
+            {
+                auto proxy = searchFieldValue_.modify();
+                proxy.value().clear();
+            }
+            globalEventContext.executeActiveEventsImmediately();
         });
-        {
-            auto proxy = searchFieldValue_.modify();
-            proxy.value().clear();
-        }
-        globalEventContext.executeActiveEventsImmediately();
+    }
+
+    bool compareDates(std::string const& leftStamp, std::string const& rightStamp) const
+    {
+        return emscripten::val::global("compareDates")(emscripten::val{leftStamp}, emscripten::val{rightStamp})
+            .as<bool>();
     }
 
   public:
@@ -234,15 +295,10 @@ class MainPage
 
         // clang-format off
         return body{}(
+            // Dialogs
+            Dialog(dialog_),
+
             // Opened Pack
-            div{
-                style = Style{
-                    "height"_style = "32px",
-                    "width"_style = "100%",
-                    "background-image"_style = "url(assets://local/red_cross.2df44cf1.svg)",
-                }
-            }
-            (),
             div{
                 id = "openedPackBox"
             }(
@@ -285,7 +341,6 @@ class MainPage
                     selectModel = model_.availableMinecraftVersions,
                     preSelect = preselectMinecraftVersion,
                     onSelect = [this](int index) {
-                        std::cout << "Setting minecraft version to: " << model_.availableMinecraftVersions.value()[index].value << "\n";
                         modPack_.minecraftVersion(model_.availableMinecraftVersions.value()[index].value);
                     },
                     selectReference = [this](std::weak_ptr<Dom::BasicElement>&& weak){
@@ -330,15 +385,7 @@ class MainPage
                                 searchFieldValue_ = event["target"]["value"].as<std::string>();
                                 searchMatchingMods();
                             }
-                        }(),
-                        button{
-                            type = "button",
-                            class_ = "btn btn-primary",
-                            id = "modSearchButton",
-                            onClick = [](emscripten::val event) {
-                                std::cout << "on Mod Submit\n";
-                            }
-                        }("Add")
+                        }()
                     ),
                     div{
                         id = "modSearchOverlay",
@@ -384,34 +431,63 @@ class MainPage
                     headerRenderer = [](){
                         return tr{}(
                             th{}("Controls"),
-                            th{}("Icon"),
                             th{}("Name"),
-                            th{}("Pulished Date")
+                            th{}("Installed Date")
                         );
                     },
-                    rowRenderer = [](auto i, auto const& mod) -> Nui::ElementRenderer{
+                    rowRenderer = [this](auto i, auto const& mod) -> Nui::ElementRenderer{
+                        const bool isOutdated = compareDates(mod.installedTimestamp, mod.newestTimestamp);
+
+                        auto cellClass = [&mod, isOutdated](){
+                            if (mod.installedTimestamp.empty())
+                                return "table-cell not-installed-cell";
+                            if (isOutdated)
+                                return "table-cell outdated-cell";
+                            return "table-cell installed-cell";                            
+                        };
+
                         return fragment(
-                            td{}(
+                            td{
+                                class_ = cellClass()
+                            }(
                                 div{
                                     class_ = "remove-button",
-                                    style = Style{
-                                        "width"_style = "32px",
-                                        "height"_style = "32px"
+                                    onClick = [this, id = mod.id](){
+                                        showYesNoDialog("Are you sure you want to remove this mod?", [this, id](){
+                                            modPack_.removeMod(id);
+                                        });
                                     }
-                                }(
-
-                                )
+                                }(),
+                                div{
+                                    class_ = "install-button",
+                                    onClick = [this, id = mod.id, isOutdated](){
+                                        if (isOutdated) {
+                                            showYesNoDialog("Update the mod? This could cause issues.", [this, id](){
+                                                modPack_.installMod(id);
+                                            });
+                                        }
+                                        else
+                                            modPack_.installMod(id);
+                                    }
+                                }
                             ),
-                            td{}(
+                            td{
+                                class_ = cellClass()
+                            }(                                
                                 img{
-                                    src = mod.logoPng64
-                                }()
+                                    src = mod.logoPng64,
+                                    class_ = "table-mod-icon"
+                                }(),
+                                span{}(mod.name)
                             ),
-                            td{}(
-                                mod.name
-                            ),
-                            td{}(
-                                mod.datePublished
+                            td{
+                                class_ = cellClass()
+                            }(
+                                [&mod]() -> std::string {
+                                    if (mod.installedTimestamp.empty())
+                                        return "Not Installed";
+                                    return mod.installedTimestamp;
+                                }
                             )
                         );
                     },
@@ -442,6 +518,7 @@ class MainPage
     std::weak_ptr<Dom::BasicElement> modLoaderSelect_;
     ThrottledFunction debouncedSearch_;
     Observed<std::string> searchFieldValue_;
+    Nui::Components::DialogController dialog_;
 };
 
 extern "C" {

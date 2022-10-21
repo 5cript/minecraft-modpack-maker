@@ -23,20 +23,13 @@ int main(int argc, char** argv)
     // Set verbosity to true
     pfd::settings::verbose(true);
 
-    // const auto result = FileDialog::showOpenDialog({.title = "Hi"});
-
     Window window{"Minecraft Modpack Maker", true /* may open debug window */};
     window.setSize(1200, 800, WebViewHint::WEBVIEW_HINT_NONE);
     window.setHtml(index());
-    // window.navigate(
-    //     "file://"s +
-    //     (getExecuteablePath().parent_path().parent_path() / "module_minecraft-modpack-maker" / "bin" / "index.html")
-    //         .string());
 
+    // Add exe dir as mapped path
     window.setVirtualHostNameToFolderMapping(
-        "local",
-        (getExecuteablePath().parent_path().parent_path() / "module_minecraft-modpack-maker" / "bin").string(),
-        HostResourceAccessKind::Allow);
+        "assets", (getExecuteablePath().parent_path() / "assets").string(), HostResourceAccessKind::Allow);
 
     RpcHub hub{window};
     FileSystem::registerAll(hub);

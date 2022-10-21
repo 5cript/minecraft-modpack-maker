@@ -16,19 +16,19 @@ using namespace Nui;
 
 namespace Modrinth
 {
+    // Adds user agent etc:
+    FetchOptions prepareOptions()
+    {
+        using namespace std::string_literals;
+
+        FetchOptions options;
+        options.headers["User-Agent"] = "github.com/5cript/minecraft-modpack-maker"s + "/" + MODMAKER_VERSION;
+        return options;
+    }
+
     namespace
     {
         constexpr static char const* apiBaseUrl = "https://api.modrinth.com/v2";
-
-        // Adds user agent etc:
-        FetchOptions prepareOptions()
-        {
-            using namespace std::string_literals;
-
-            FetchOptions options;
-            options.headers["User-Agent"] = "github.com/5cript/minecraft-modpack-maker"s + "/" + MODMAKER_VERSION;
-            return options;
-        }
 
         std::string serializeFacets(Facets const& facets)
         {

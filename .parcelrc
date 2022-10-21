@@ -1,11 +1,7 @@
 {
   "extends": "@parcel/config-default",
-  "transformers": {
-    "data-url:*": ["...", "@parcel/transformer-inline-string"],
-    "blob-url:*": ["...", "@parcel/transformer-inline"]
-  },
-  "optimizers": {
-    "data-url:*": ["...", "@parcel/optimizer-data-url"],
-    "blob-url:*": ["...", "@parcel/optimizer-blob-url"]
-  }
+  "reporters": [
+    "...",
+    "parcel-reporter-static-files-copy"
+  ]
 }

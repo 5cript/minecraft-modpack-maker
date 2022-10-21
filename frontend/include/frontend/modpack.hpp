@@ -13,9 +13,9 @@ struct Mod
     std::string installedName;
     std::string installedTimestamp;
     std::string logoPng64;
-    std::string datePublished;
+    std::string newestTimestamp;
 };
-BOOST_DESCRIBE_STRUCT(Mod, (), (name, id, slug, installedName, installedTimestamp, logoPng64));
+BOOST_DESCRIBE_STRUCT(Mod, (), (name, id, slug, installedName, installedTimestamp, logoPng64, newestTimestamp));
 struct ModPack
 {
     Nui::Observed<std::vector<Mod>> mods;
@@ -31,6 +31,7 @@ class ModPackManager
     void addMod(Mod const& mod);
     void removeMod(std::string const& id);
     void modLoader(std::string const& loader);
+    void installMod(std::string const& id);
     std::string modLoader() const;
     void minecraftVersion(std::string const& version);
     std::string minecraftVersion() const;

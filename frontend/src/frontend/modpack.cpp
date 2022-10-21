@@ -68,6 +68,9 @@ Nui::Observed<std::vector<Mod>> const& ModPackManager::mods() const
     return pack_.mods;
 }
 //---------------------------------------------------------------------------------------------------------------------
+void ModPackManager::installMod(std::string const& id)
+{}
+//---------------------------------------------------------------------------------------------------------------------
 std::filesystem::path ModPackManager::modpackFile() const
 {
     return openPack_ / "mcpackdev" / "modpack.json";

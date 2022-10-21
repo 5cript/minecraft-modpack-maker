@@ -1,9 +1,7 @@
 var Module = {
-    onRuntimeInitialized: () => {
-        console.log('WASM Runtime initialized bla');
-        Module.main();
-    },
-    wasmMemory: new ArrayBuffer(1024 * 1024 * 1024),
+  onRuntimeInitialized: () => {
+    Module.main();
+  },
 };
 
 export default Module;

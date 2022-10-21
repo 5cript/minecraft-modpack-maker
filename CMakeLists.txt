@@ -22,7 +22,7 @@ if (EMSCRIPTEN)
 		PREJS
 			${CMAKE_CURRENT_SOURCE_DIR}/frontend/src/frontend/js/module.js
 		EMSCRIPTEN_LINK_OPTIONS
-            -O2 -sEXPORTED_FUNCTIONS=_main,_frontendMain -fno-inline-functions
+            -O2 -sEXPORTED_FUNCTIONS=_main,_frontendMain
             # or other options, see emscripten docs.
 			#-sALLOW_MEMORY_GROWTH=1 
         EMSCRIPTEN_COMPILE_OPTIONS
