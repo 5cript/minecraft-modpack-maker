@@ -22,11 +22,13 @@ else()
 )
 endif()
 
+find_package(Boost 1.78.0 REQUIRED COMPONENTS filesystem system)
+
 target_link_libraries(minecraft-modpack-maker
     PRIVATE
         archive_static
-        boost_filesystem
-        boost_system
+        Boost::filesystem
+        Boost::system
 )
 
 target_include_directories(minecraft-modpack-maker PRIVATE ${CMAKE_SOURCE_DIR}/backend/include)

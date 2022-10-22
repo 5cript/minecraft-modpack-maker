@@ -1,6 +1,10 @@
 #pragma once
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 #include <archive.h>
+#pragma clang diagnostic pop
+
 #include <type_traits>
 
 namespace Archive

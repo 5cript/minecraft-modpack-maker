@@ -3,8 +3,6 @@
 #include <backend/archive/archive.hpp>
 #include <backend/archive/entry.hpp>
 
-#include <archive.h>
-
 #include <chrono>
 #include <mutex>
 #include <optional>
@@ -36,7 +34,8 @@ namespace Archive
         std::unique_ptr<Archive> archive_;
         DataProvider* provider;
         DataReceiver* receiver;
-        std::jthread reader;
+        std::thread reader;
+        std::atomic_bool internalStopRequested;
 
         Implementation(DataProvider* provider, DataReceiver* receiver)
             : archive_{std::make_unique<ArchiveReader>()}
@@ -54,12 +53,13 @@ namespace Archive
     {}
 
     Reader::~Reader()
-    {}
+    {
+        awaitRead();
+    }
 
     void Reader::readAsync(std::shared_future<void> externalStopToken, std::chrono::seconds stopTokenTimeout)
     {
-        impl_->reader = std::jthread{[this, externalStopToken = std::move(externalStopToken), stopTokenTimeout](
-                                         std::stop_token internalStopToken) {
+        impl_->reader = std::thread{[this, externalStopToken = std::move(externalStopToken), stopTokenTimeout]() {
             // This has to be done in the read thread, because the open may call the read function
             // already. Causing this to block if called from the constructor.
             auto result =
@@ -72,19 +72,14 @@ namespace Archive
 
             bool stopFlag = false;
             std::optional<std::chrono::system_clock::time_point> externalStopRequestedTime;
-            auto shallStop = [this,
-                              &internalStopToken,
-                              &externalStopToken,
-                              &stopFlag,
-                              &externalStopRequestedTime,
-                              &stopTokenTimeout]() {
+            auto shallStop = [this, &externalStopToken, &stopFlag, &externalStopRequestedTime, &stopTokenTimeout]() {
                 if (!externalStopRequestedTime)
                 {
                     if (externalStopToken.wait_for(std::chrono::seconds{0}) == std::future_status::ready)
                         externalStopRequestedTime = std::chrono::system_clock::now();
                 }
 
-                const auto shall = internalStopToken.stop_requested() ||
+                const auto shall = impl_->internalStopRequested ||
                     (externalStopRequestedTime &&
                      (externalStopRequestedTime.value() < std::chrono::system_clock::now() - stopTokenTimeout));
                 if (shall && !stopFlag)
@@ -146,6 +141,7 @@ namespace Archive
     }
     void Reader::awaitRead()
     {
+        impl_->internalStopRequested = true;
         if (impl_->reader.joinable())
             impl_->reader.join();
     }

@@ -40,38 +40,45 @@ MinecraftLauncher::MinecraftLauncher(Nui::RpcHub& hub)
 }
 bool MinecraftLauncher::downloadLinuxLauncher(std::filesystem::path const& whereTo)
 {
-    const auto launcherPath = whereTo / "minecraft-launcher";
+    const auto launcherPath = whereTo / "client" / "minecraft-launcher";
 
     if (std::filesystem::exists(launcherPath) && std::filesystem::is_regular_file(launcherPath))
         return true;
-    Roar::Curl::Request request;
-    TarExtractorSink sink{std::filesystem::path{whereTo}};
-    auto response = request.sink(sink).followRedirects(true).get(linuxLauncherUrl);
-    sink.finalize();
+
+    {
+        Roar::Curl::Request request;
+        TarExtractorSink sink{std::filesystem::path{whereTo} / "client"};
+        auto response = request.sink(sink).followRedirects(true).get(linuxLauncherUrl);
+        sink.finalize();
+
+        if (response.code() != boost::beast::http::status::ok &&
+            response.code() != boost::beast::http::status::no_content)
+            return false;
+    }
 
     // Move launcher up:
     if (std::filesystem::exists(launcherPath))
     {
-        std::filesystem::rename(launcherPath / "minecraft-launcher", whereTo / "minecraft-launcher.temp");
+        std::filesystem::rename(launcherPath / "minecraft-launcher", whereTo / "client" / "launcher.tmp");
         std::filesystem::remove(launcherPath);
-        std::filesystem::rename(whereTo / "minecraft-launcher.temp", launcherPath);
+        std::filesystem::rename(whereTo / "client" / "launcher.tmp", launcherPath);
     }
 
     // add execute permission:
     const auto originalPerms = std::filesystem::status(launcherPath).permissions();
     std::filesystem::permissions(launcherPath, originalPerms | std::filesystem::perms::owner_exec);
 
-    return response.code() == boost::beast::http::status::ok ||
-        response.code() == boost::beast::http::status::no_content;
+    return true;
 }
 bool MinecraftLauncher::downloadWindowsLauncher(std::filesystem::path const& whereTo)
 {
-    if (std::filesystem::exists(whereTo / "Minecraft.exe") &&
-        std::filesystem::is_regular_file(whereTo / "Minecraft.exe"))
+    const auto launcherPath = whereTo / "client" / "Minecraft.exe";
+
+    if (std::filesystem::exists(launcherPath) && std::filesystem::is_regular_file(launcherPath))
         return true;
 
     Roar::Curl::Request request;
-    auto response = request.sink(whereTo / "Minecraft.exe").followRedirects(true).get(windowsLauncherUrl);
+    auto response = request.sink(launcherPath).followRedirects(true).get(windowsLauncherUrl);
     return response.code() == boost::beast::http::status::ok ||
         response.code() == boost::beast::http::status::no_content;
 }

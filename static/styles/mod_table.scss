@@ -28,16 +28,29 @@
     border-right: 1px solid $light;
 }
 
-.remove-button {
+/* workaround unfortunately necessary until https://github.com/MicrosoftEdge/WebView2Feedback/issues/1825 and 
+   https://github.com/MicrosoftEdge/WebView2Feedback/issues/173
+*/
+.remove-button-win{
+    background-image: url("http://assets/red_cross.svg");
+}
+.remove-button-nix {
     background-image: url("assets://assets/red_cross.svg");
+}
+.remove-button {
     background-repeat: no-repeat;
     cursor: pointer;
     display: inline-block;
     width: 30px;
     height: 32px;
 }
-.install-button {
+.install-button-win{
+    background-image: url("http://assets/up_arrow.png");
+}
+.install-button-nix {
     background-image: url("assets://assets/up_arrow.png");
+}
+.install-button {
     background-repeat: no-repeat;
     cursor: pointer;
     display: inline-block;

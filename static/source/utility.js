@@ -4,4 +4,6 @@
         const rightDate = new Date(rightDateString);
         return leftDate.getTime() < rightDate.getTime();
     };
+
+    globalThis.isChrome = (globalThis.chrome !== undefined);
 })();

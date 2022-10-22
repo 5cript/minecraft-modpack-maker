@@ -3,11 +3,17 @@
 #include "error.hpp"
 
 // libarchive
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 #include <archive.h>
 #include <archive_entry.h>
+#pragma clang diagnostic pop
 
 #include <filesystem>
+#include <sys/types.h>
 #include <type_traits>
+
+#include <nui/utility/widen.hpp>
 
 namespace Archive
 {
@@ -57,17 +63,21 @@ namespace Archive
         {
             return ::archive_entry_pathname(entry_);
         }
-        uid_t getUid() const
+        unsigned int getUid() const
         {
-            return static_cast<uid_t>(::archive_entry_uid(entry_));
+            return static_cast<unsigned int>(::archive_entry_uid(entry_));
         }
-        gid_t getGid() const
+        unsigned int getGid() const
         {
-            return static_cast<gid_t>(::archive_entry_gid(entry_));
+            return static_cast<unsigned int>(::archive_entry_gid(entry_));
         }
         void setPathname(std::filesystem::path const& path)
         {
+#ifdef __WIN32
+            ::archive_entry_set_pathname(entry_, path.string().c_str());
+#else
             ::archive_entry_set_pathname(entry_, path.c_str());
+#endif
         }
         std::size_t getSize() const
         {

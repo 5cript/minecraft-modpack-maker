@@ -1,4 +1,3 @@
-#include <archive.h>
 #include <backend/archive/archive.hpp>
 #include <backend/archive/entry.hpp>
 #include <backend/archive/error.hpp>
@@ -54,7 +53,11 @@ namespace Archive
     {
         // Do not include PAX extensions if possible.
         ::archive_write_set_format_pax_restricted(*impl_->archive_);
+#ifdef __WIN32
+        auto error = ::archive_write_open_filename(*impl_->archive_, path.string().c_str());
+#else
         auto error = ::archive_write_open_filename(*impl_->archive_, path.c_str());
+#endif
         if (error != ARCHIVE_OK)
         {
             throw Error(error, ::archive_error_string(*impl_->archive_));
@@ -77,7 +80,7 @@ namespace Archive
             // on write
             +[](::archive*, void* writer, void const* buffer, size_t length) {
                 static_cast<Writer*>(writer)->impl_->outputBuffer_->append(static_cast<char const*>(buffer), length);
-                return static_cast<long>(length);
+                return static_cast<la_ssize_t>(length);
             },
             // on close
             +[](::archive*, void*) {

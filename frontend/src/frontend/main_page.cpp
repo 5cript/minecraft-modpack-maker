@@ -350,7 +350,12 @@ Nui::ElementRenderer MainPage::packControls()
         }(
             img{
                 id = "packOpenerTriangle",
-                src = "assets://assets/triangle_down.svg"
+                src = [](){
+                    if (emscripten::val::global("isChrome").as<bool>())
+                        return "http://assets/triangle_down.svg";
+                    else
+                        return "assets://assets/triangle_down.svg";
+                }
             }(),
             span{}("Pack Controls")
         ),
@@ -497,7 +502,14 @@ Nui::ElementRenderer MainPage::modTable()
                     class_ = cellClass()
                 }(
                     div{
-                        class_ = "install-button",
+                        class_ = [](){
+                            std::string className = "install-button";
+                            if (emscripten::val::global("isChrome").as<bool>())
+                                className += " install-button-win";
+                            else
+                                className += " install-button-nix";
+                            return className;
+                        }(),
                         onClick = [this, id = mod.id, isOutdated](){
                             if (isOutdated) {
                                 showYesNoDialog("Update the mod? This could cause issues.", [this, id](){
@@ -509,7 +521,14 @@ Nui::ElementRenderer MainPage::modTable()
                         }
                     },
                     div{
-                        class_ = "remove-button",
+                        class_ = [](){
+                            std::string className = "remove-button";
+                            if (emscripten::val::global("isChrome").as<bool>())
+                                className += " remove-button-win";
+                            else
+                                className += " remove-button-nix";
+                            return className;
+                        }(),
                         onClick = [this, id = mod.id](){
                             showYesNoDialog("Are you sure you want to remove this mod?", [this, id](){
                                 modPack_.removeMod(id);

@@ -26,6 +26,11 @@ Fabric::Fabric(Nui::RpcHub& hub)
         "fabricInstallStatus",
         [&hub](std::string const& responseId, std::string const& path, std::string const& mcVersion) {
             auto versionsPath = std::filesystem::path{path} / "client" / "versions";
+            if (!std::filesystem::exists(versionsPath))
+            {
+                hub.callRemote(responseId, ModLoaderInstallStatus::NotInstalled);
+                return;
+            }
             auto it = std::filesystem::directory_iterator{versionsPath};
             auto end = std::filesystem::directory_iterator{};
             for (; it != end; ++it)
@@ -56,7 +61,7 @@ Fabric::Fabric(Nui::RpcHub& hub)
                     }
                     else
                     {
-                        hub.callRemote(responseId, static_cast<int>(ModLoaderInstallStatus::NotInstalled));
+                        hub.callRemote(responseId, ModLoaderInstallStatus::NotInstalled);
                         return;
                     }
                 }
