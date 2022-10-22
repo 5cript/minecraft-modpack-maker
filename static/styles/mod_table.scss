@@ -1,0 +1,63 @@
+#modTable {
+    width: 100%;
+    height: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    border: 1px solid $light;
+    background-color: $body-bg;
+    color: $body-color;
+    margin: $gap;
+    margin-top: calc($gap * 2);
+    overflow: auto;
+}
+#modTable thead {
+    padding: $gap;
+    border-bottom: 1px solid $light;
+}
+#modTable thead tr th {
+    padding: $gap;
+    border-right: 1px solid $light;
+    font-weight: bold;
+}
+#modTable tbody tr {
+    border-bottom: 1px solid $light;
+}
+#modTable tbody tr td {
+    padding: $gap;
+    min-height: 32px;
+    border-right: 1px solid $light;
+}
+
+.remove-button {
+    background-image: url("assets://assets/red_cross.svg");
+    background-repeat: no-repeat;
+    cursor: pointer;
+    display: inline-block;
+    width: 30px;
+    height: 32px;
+}
+.install-button {
+    background-image: url("assets://assets/up_arrow.png");
+    background-repeat: no-repeat;
+    cursor: pointer;
+    display: inline-block;
+    width: 30px;
+    height: 32px;
+}
+.table-mod-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: $gap;
+}
+.not-installed-cell {
+    background-color: rgba(200 0 0 / 0.5);
+}
+.outdated-cell {
+    background-color: rgba(255 255 0 / 0.5);
+}
+.installed-cell {
+    background-color: rgba(0 255 0 / 0.5);
+}
+.footer-cell {
+    color: $secondary;
+}

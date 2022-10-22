@@ -21,3 +21,7 @@ $theme-colors: (
   "light":      $light,
   "dark":       $dark
 );
+
+$gap: 5px;
+$darker-bg: darken($body-bg, 5%);
+$much-darker-bg: darken($body-bg, 15%);

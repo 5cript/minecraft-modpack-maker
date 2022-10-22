@@ -1,0 +1,29 @@
+#packControlsOpener {
+    min-height: 20px;
+    padding: 0px;
+    padding-bottom: 3px;
+    background-color: $darker-bg;
+    border-bottom: outset 3px $body-color;
+}
+#packOpenerTriangle {
+    color: $body-color;
+    width: 8px;
+    height: 8px;
+    margin: $gap;
+}
+#packControlsOpener span {
+    cursor: pointer;
+}
+#packControls {
+    background-color: $darker-bg;
+    padding: $gap;
+}
+#packControlsBody {
+    padding: $gap;
+}
+// #packControlsBody {
+//     display: flex;
+//     padding: $gap;
+//     height: 100%;
+//     width: 100%;
+// }

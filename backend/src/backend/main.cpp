@@ -1,5 +1,7 @@
 #include <backend/executeable_path.hpp>
+#include <backend/fabric.hpp>
 #include <backend/filesystem.hpp>
+#include <backend/minecraft_launcher.hpp>
 
 #include <nui/backend/rpc_hub.hpp>
 #include <nui/core.hpp>
@@ -32,6 +34,8 @@ int main(int argc, char** argv)
         "assets", (getExecuteablePath().parent_path() / "assets").string(), HostResourceAccessKind::Allow);
 
     RpcHub hub{window};
+    MinecraftLauncher launcherTools{hub};
+    Fabric fabricTools{hub};
     FileSystem::registerAll(hub);
     hub.enableAll();
     window.run();

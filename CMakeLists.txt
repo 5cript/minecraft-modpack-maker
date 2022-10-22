@@ -22,7 +22,7 @@ if (EMSCRIPTEN)
 		PREJS
 			${CMAKE_CURRENT_SOURCE_DIR}/frontend/src/frontend/js/module.js
 		EMSCRIPTEN_LINK_OPTIONS
-            -O2 -sEXPORTED_FUNCTIONS=_main,_frontendMain
+            -O2 -sEXPORTED_FUNCTIONS=_frontendMain
             # or other options, see emscripten docs.
 			#-sALLOW_MEMORY_GROWTH=1 
         EMSCRIPTEN_COMPILE_OPTIONS
@@ -33,6 +33,8 @@ if (EMSCRIPTEN)
 else()
     # Link backend of nui outside of emscripten
     target_link_libraries(minecraft-modpack-maker PRIVATE nui-backend roar)
+
+    include(cmake/dependencies/libarchive.cmake)
 
     nui_set_target_output_directories(minecraft-modpack-maker)
 
