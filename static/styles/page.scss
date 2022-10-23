@@ -51,6 +51,7 @@ body {
     padding: $gap;
     background-color: $darker-bg;
     isolation: isolate;
+    position: relative;
 }
 
 #modInputBox {

@@ -21,9 +21,7 @@
 #packControlsBody {
     padding: $gap;
 }
-// #packControlsBody {
-//     display: flex;
-//     padding: $gap;
-//     height: 100%;
-//     width: 100%;
-// }
+#packControlsBody {
+    display: flex;
+    gap: $gap;
+}

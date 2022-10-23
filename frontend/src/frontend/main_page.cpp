@@ -11,6 +11,7 @@
 #include <nui/frontend/elements/i.hpp>
 #include <nui/frontend/elements/img.hpp>
 #include <nui/frontend/elements/label.hpp>
+#include <nui/frontend/elements/progress.hpp>
 #include <nui/frontend/elements/span.hpp>
 #include <nui/frontend/elements/td.hpp>
 #include <nui/frontend/elements/th.hpp>
@@ -21,13 +22,16 @@
 #include <nui/frontend/attributes/col_span.hpp>
 #include <nui/frontend/attributes/for.hpp>
 #include <nui/frontend/attributes/id.hpp>
+#include <nui/frontend/attributes/max.hpp>
 #include <nui/frontend/attributes/on_click.hpp>
 #include <nui/frontend/attributes/on_input.hpp>
 #include <nui/frontend/attributes/place_holder.hpp>
 #include <nui/frontend/attributes/read_only.hpp>
+#include <nui/frontend/attributes/role.hpp>
 #include <nui/frontend/attributes/src.hpp>
 #include <nui/frontend/attributes/style.hpp>
 #include <nui/frontend/attributes/type.hpp>
+#include <nui/frontend/attributes/value.hpp>
 
 // Components
 #include <frontend/components/labeled_select.hpp>
@@ -47,6 +51,7 @@ using namespace Nui::Elements;
 using namespace Nui::Attributes;
 using namespace Nui::Components;
 using namespace Nui::Attributes::Literals;
+using namespace std::string_literals;
 
 MAKE_HTML_VALUE_ATTRIBUTE_RENAME(dataBsTarget, "data-bs-target")
 MAKE_HTML_VALUE_ATTRIBUTE_RENAME(dataBsToggle, "data-bs-toggle")
@@ -86,6 +91,40 @@ MainPage::MainPage()
         },
         [this](ThrottledFunction&& func) {
             debouncedSearch_ = std::move(func);
+        },
+        true);
+}
+
+void MainPage::updateLatestVersions()
+{
+    // TODO: Progress Dialog (in nui?)
+    // Then update all mods depending on X-RateLimit-Remaining
+
+    updateControlLock_ = true;
+    versionsToFetch_ = modPack_.mods().value().size();
+    versionsFetched_ = 0;
+
+    std::function<void(bool)> onSingleUpdateDone = [this](bool doContinue) {
+        ++versionsFetched_;
+        if (doContinue)
+            modUpdateThrottle_();
+        else
+            updateControlLock_ = false;
+        globalEventContext.executeActiveEventsImmediately();
+    };
+
+    // TODO: checkbox
+    bool featuredOnly = false;
+    auto updateSingle = modPack_.createVersionUpdateMachine(minecraftVersions_, featuredOnly, onSingleUpdateDone);
+
+    Nui::throttle(
+        350,
+        [updateSingle]() {
+            updateSingle();
+        },
+        [this](ThrottledFunction&& func) {
+            modUpdateThrottle_ = std::move(func);
+            modUpdateThrottle_();
         },
         true);
 }
@@ -305,9 +344,15 @@ Nui::ElementRenderer MainPage::render()
             ),
             button{
                 type = "button",
-                class_ = "btn btn-primary",
+                class_ = observe(updateControlLock_).generate([this](){
+                    if (*updateControlLock_)
+                        return "btn btn-primary disabled";
+                    return "btn btn-primary";
+                }),
                 id = "packOpenButton",
                 onClick = [this](emscripten::val event) {
+                    if (*updateControlLock_)
+                        return;
                     FileDialog::showDirectoryDialog({}, [this](std::optional<std::vector<std::filesystem::path>> result) {
                         if (result)
                         {
@@ -391,8 +436,10 @@ Nui::ElementRenderer MainPage::packControls()
             id = "packControlsBody"
         }(
             button {
-                class_ = observe(config_.openPack, modPack_.loaderInstallStatus()).generate([this](){
-                    if (config_.openPack.empty())
+                class_ = observe(updateControlLock_, config_.openPack, modPack_.loaderInstallStatus()).generate([this](){
+                    if (updateControlLock_.value())
+                        return "btn btn-primary disabled";
+                    else if (config_.openPack.empty())
                         return "btn btn-primary disabled";
                     else
                     {
@@ -404,11 +451,13 @@ Nui::ElementRenderer MainPage::packControls()
                             case ModPackManager::LoaderInstallStatus::OutOfDate:
                                 return "btn btn-warning";
                             case ModPackManager::LoaderInstallStatus::Installed:
-                                return "btn btn-success";
+                                return "btn btn-primary";
                         }
                     }
                 }),
                 onClick = [this](){
+                    if (updateControlLock_.value())
+                        return;
                     modPack_.installLoader();
                 }
             }(
@@ -426,9 +475,16 @@ Nui::ElementRenderer MainPage::packControls()
                 })
             ),
             button{
+                class_ = observe(updateControlLock_).generate([this](){
+                    if (updateControlLock_.value())
+                        return "btn btn-primary disabled";
+                    return
+                        "btn btn-primary";
+                }),
                 onClick = [this](){
-                    // TODO: Progress Dialog (in nui?)
-                    // Then update all mods depending on X-RateLimit-Remaining
+                    if (updateControlLock_.value())
+                        return;
+                    updateLatestVersions();
                 }
             }(
                 "Check for Updates"
@@ -445,6 +501,46 @@ Nui::ElementRenderer MainPage::modTableArea()
     return div{
         id = "modTableArea"
     }(
+        div{
+            id = "modTableBlocker",
+            style = Style{
+                "visibility"_style = observe(updateControlLock_).generate([this](){
+                    if (updateControlLock_.value())
+                        return "visible";
+                    return "hidden";
+                })
+            },
+        }(
+            div{
+            }(
+                label{
+                    for_ = "modVersionUpdateProgress"
+                }(
+                    "Fetching most recent version of mods..."
+                ),
+                div{
+                    class_ = "progress"
+                }(
+                    div{
+                        class_ = "progress-bar", 
+                        role="progressbar",
+                        style = Style{
+                            "width"_style = observe(versionsFetched_, versionsToFetch_).generate([this](){
+                                if (versionsToFetch_.value() == 0)
+                                    return "0%"s;
+                                return std::to_string(versionsFetched_.value() * 100 / versionsToFetch_.value()) + "%";
+                            })
+                        }
+                    }(
+                        observe(versionsFetched_, versionsToFetch_).generate([this](){
+                            if (versionsToFetch_.value() == 0)
+                                return "?"s;
+                            return std::to_string(versionsFetched_.value() * 100 / versionsToFetch_.value()) + "%";
+                        })
+                    )
+                )
+            )
+        ),
         div{
             id = "modAddBox"
         }(

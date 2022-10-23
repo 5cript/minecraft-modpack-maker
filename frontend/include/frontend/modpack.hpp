@@ -109,7 +109,10 @@ class ModPackManager
     void installLoader();
     std::string loaderLowerCase() const;
     Mod const* findMod(std::string const& id);
-    void updateNewestVersions();
+    std::function<void()> createVersionUpdateMachine(
+        std::vector<std::string> minecraftVersions,
+        bool featuredOnly,
+        std::function<void(bool)> onUpdateDone);
 
   private:
     void save();

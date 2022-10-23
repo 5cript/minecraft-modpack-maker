@@ -72,6 +72,34 @@ void ModPackManager::open(std::filesystem::path path, std::function<void()> onOp
         })(modpackFile().string());
 }
 //---------------------------------------------------------------------------------------------------------------------
+std::function<void()> ModPackManager::createVersionUpdateMachine(
+    std::vector<std::string> minecraftVersions,
+    bool featuredOnly,
+    std::function<void(bool)> onUpdateDone)
+{
+    return [this,
+            i = std::size_t{0},
+            minecraftVersions = std::move(minecraftVersions),
+            featuredOnly,
+            onUpdateDone = std::move(onUpdateDone)]() mutable {
+        if (i >= pack_.mods.size())
+            return;
+
+        findModVersions(
+            pack_.mods.value()[i].id,
+            false,
+            minecraftVersions,
+            featuredOnly,
+            [&i, &onUpdateDone, this](std::vector<Modrinth::Projects::Version> const& versions) {
+                if (!versions.empty())
+                    pack_.mods[i]->newestTimestamp = versions[0].date_published;
+                std::cout << "Updated: " << pack_.mods.value()[i].name << "\n";
+                ++i;
+                onUpdateDone(i < pack_.mods.size());
+            });
+    };
+}
+//---------------------------------------------------------------------------------------------------------------------
 void ModPackManager::onOpen()
 {
     std::sort(pack_.mods.value().begin(), pack_.mods.value().end(), [](Mod const& a, Mod const& b) {
@@ -105,9 +133,6 @@ Mod const* ModPackManager::findMod(std::string const& id)
         return nullptr;
     return &*it;
 }
-//---------------------------------------------------------------------------------------------------------------------
-void ModPackManager::updateNewestVersions()
-{}
 //---------------------------------------------------------------------------------------------------------------------
 void ModPackManager::removeMod(std::string const& id)
 {

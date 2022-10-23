@@ -8,6 +8,7 @@
 // Other Nui
 #include <nui/core.hpp>
 #include <nui/frontend/api/throttle.hpp>
+#include <nui/frontend/api/timer.hpp>
 #include <nui/frontend/dom/element.hpp>
 #include <nui/frontend/event_system/event_context.hpp>
 #include <nui/frontend/filesystem/file_dialog.hpp>
@@ -65,6 +66,7 @@ class MainPage
     Nui::ElementRenderer modTableArea();
     Nui::ElementRenderer modTable();
     Nui::ElementRenderer packControls();
+    void updateLatestVersions();
 
   private:
     Nui::Window window_;
@@ -79,4 +81,10 @@ class MainPage
     std::vector<std::string> minecraftVersions_;
     ModPickerController modPicker_;
     Nui::Observed<std::vector<Modrinth::Projects::Version>> lastModVersions_;
+    Nui::ThrottledFunction modUpdateThrottle_;
+
+    // mod version update
+    Nui::Observed<bool> updateControlLock_;
+    Nui::Observed<int> versionsToFetch_;
+    Nui::Observed<int> versionsFetched_;
 };
