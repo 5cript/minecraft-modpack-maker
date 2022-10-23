@@ -5,7 +5,7 @@ target_sources(minecraft-modpack-maker
         archive/error.cpp
         archive/reader.cpp
         archive/writer.cpp
-        minecraft_launcher.cpp
+        modpack.cpp
         tar_extractor_sink.cpp
         fabric.cpp
 )

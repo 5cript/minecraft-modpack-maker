@@ -7,6 +7,7 @@ target_sources(minecraft-modpack-maker
         main_page.cpp 
         modpack.cpp
         config.cpp
+        components/mod_picker.cpp
 )
 
 target_include_directories(minecraft-modpack-maker PRIVATE ${CMAKE_SOURCE_DIR}/backend/include)

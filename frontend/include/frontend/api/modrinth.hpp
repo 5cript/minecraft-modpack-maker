@@ -181,8 +181,8 @@ namespace Modrinth
         struct Dependency
         {
             std::string version_id;
-            std::string project_id;
-            std::string file_name;
+            std::optional<std::string> project_id;
+            std::optional<std::string> file_name;
             std::string dependency_type;
         };
         BOOST_DESCRIBE_STRUCT(Dependency, (), (version_id, project_id, file_name, dependency_type));
@@ -199,7 +199,6 @@ namespace Modrinth
         {
             std::string name;
             std::string version_number;
-            std::string changelog;
             std::vector<Dependency> dependencies;
             std::vector<std::string> game_versions;
             std::string version_type;
@@ -207,10 +206,9 @@ namespace Modrinth
             bool featured;
             std::string id;
             std::string project_id;
-            std::string author_id;
+            std::optional<std::string> author_id;
             std::string date_published;
             int downloads;
-            std::optional<std::string> changelog_url;
             std::vector<File> files;
         };
         BOOST_DESCRIBE_STRUCT(
@@ -218,7 +216,6 @@ namespace Modrinth
             (),
             (name,
              version_number,
-             changelog,
              dependencies,
              game_versions,
              version_type,
@@ -229,7 +226,6 @@ namespace Modrinth
              author_id,
              date_published,
              downloads,
-             changelog_url,
              files));
         struct Dependencies
         {
@@ -241,6 +237,11 @@ namespace Modrinth
         void dependencies(
             std::string const& idOrSlug,
             std::function<void(Http::Response<Dependencies> const&)> const& callback);
-        void version(std::string const& idOrSlug, std::function<void(Http::Response<Version> const&)> const& callback);
+        void version(
+            std::string const& idOrSlug,
+            std::string const& loader,
+            std::vector<std::string> const& gameVersions,
+            bool featuredOnly,
+            std::function<void(Http::Response<std::vector<Version>> const&)> const& callback);
     }
 }

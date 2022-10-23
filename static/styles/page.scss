@@ -2,6 +2,7 @@
 @import "../../node_modules/bootstrap/scss/bootstrap.scss";
 @import "./mod_table.scss";
 @import "./pack_controls.scss";
+@import "./mod_picker.scss";
 
 body {
     background-color: $body-bg;
@@ -84,6 +85,9 @@ body {
     gap: $gap;
     margin: $gap;
     align-items: center;
+}
+.mod-search-result-installed {
+    color: $danger;
 }
 .mod-search-result img {
     width: 32px;

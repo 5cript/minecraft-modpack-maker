@@ -71,6 +71,8 @@ MainPage::MainPage()
                   std::cout << "Dialog opened without attached action!";
               },
       }}
+    , minecraftVersions_{}
+    , lastModVersions_{}
 {
     loadModLoaders();
     loadConfig([this]() {
@@ -107,6 +109,13 @@ void MainPage::loadMinecraftVersions(bool includeSnapshots)
                 std::back_inserter(filteredVersions),
                 [](auto const& versionStruct) {
                     return versionStruct.type == "release";
+                });
+            std::transform(
+                std::begin(filteredVersions),
+                std::end(filteredVersions),
+                std::back_inserter(minecraftVersions_),
+                [](auto const& versionStruct) {
+                    return versionStruct.id;
                 });
         }
         {
@@ -199,28 +208,40 @@ void MainPage::onSelectSearchedMod(auto const& searchHit)
 {
     using namespace std::string_literals;
 
-    auto options = Modrinth::prepareOptions();
-    options.verbose = true;
-    options.followRedirects = true;
-    options.autoReferer = true;
-    options.dontDecodeBody = true;
-    Http::get<std::string>(searchHit.icon_url, options, [this, searchHit](auto const& response) {
-        std::cout << searchHit.icon_url << "\n";
-        modPack_.addMod({
-            .name = searchHit.title,
-            .id = searchHit.project_id,
-            .slug = searchHit.slug,
-            .installedName = "",
-            .installedTimestamp = "",
-            .logoPng64 = "data:image/png;base64,"s + *response.body,
-            .newestTimestamp = searchHit.date_modified // FIXME: this is probably not the correct date.
+    if (modPack_.findMod(searchHit.project_id) != nullptr)
+        return;
+
+    // TODO: checkbox
+    bool fuzzySearch = false;
+    bool featuredOnly = false;
+    modPack_.findModVersions(
+        searchHit.project_id,
+        fuzzySearch,
+        minecraftVersions_,
+        featuredOnly,
+        [this, searchHit](std::vector<Modrinth::Projects::Version> const& versions) {
+            auto options = Modrinth::prepareOptions();
+            options.followRedirects = true;
+            options.autoReferer = true;
+            options.dontDecodeBody = true;
+
+            Http::get<std::string>(searchHit.icon_url, options, [this, searchHit, versions](auto const& response) {
+                modPack_.addMod({
+                    .name = searchHit.title,
+                    .id = searchHit.project_id,
+                    .slug = searchHit.slug,
+                    .installedName = "",
+                    .installedTimestamp = "",
+                    .logoPng64 = "data:image/png;base64,"s + *response.body,
+                    .newestTimestamp = versions.empty() ? "" : versions.front().date_published,
+                });
+                {
+                    auto proxy = searchFieldValue_.modify();
+                    proxy.value().clear();
+                }
+                globalEventContext.executeActiveEventsImmediately();
+            });
         });
-        {
-            auto proxy = searchFieldValue_.modify();
-            proxy.value().clear();
-        }
-        globalEventContext.executeActiveEventsImmediately();
-    });
 }
 
 bool MainPage::compareDates(std::string const& leftStamp, std::string const& rightStamp) const
@@ -259,80 +280,86 @@ Nui::ElementRenderer MainPage::render()
     }
 
     // clang-format off
-        return body{}(
-            // Dialogs
-            Dialog(dialog_),
+    return body{}(
+        // Dialogs
+        Dialog(dialog_),
+        modPicker(modPicker_, lastModVersions_, [this](std::optional<Modrinth::Projects::Version> const& picked) {
+            if (picked)
+                modPack_.installMod(*picked);
+            lastModVersions_.clear();
+            globalEventContext.executeActiveEventsImmediately();
+        }),
 
-            // Opened Pack
-            div{
-                id = "openedPackBox"
-            }(
-                LabeledTextInput(
-                    LabeledTextInputArgs{
-                        .boxId = "openPackInput",
-                        .inputId = "packPath",
-                        .labelId = "openedPackLabel",
-                        .label = "Opened Pack"
-                    },
-                    value = config_.openPack
-                ),
-                button{
-                    type = "button",
-                    class_ = "btn btn-primary",
-                    id = "packOpenButton",
-                    onClick = [this](emscripten::val event) {
-                        FileDialog::showDirectoryDialog({}, [this](std::optional<std::vector<std::filesystem::path>> result) {
-                            if (result)
-                            {
-                                config_.openPack = result.value()[0].string();
-                                saveConfig();
-                                openModPack();
-                            }
-                        });
-                    }
-                }("Open")
+        // Opened Pack
+        div{
+            id = "openedPackBox"
+        }(
+            LabeledTextInput(
+                LabeledTextInputArgs{
+                    .boxId = "openPackInput",
+                    .inputId = "packPath",
+                    .labelId = "openedPackLabel",
+                    .label = "Opened Pack"
+                },
+                value = config_.openPack
             ),
-            // Pack Options
-            div{
-                id = "packOptions"
-            }(
-                LabeledSelect(
-                    {
-                        .boxId = "minecraftVersionSelect",
-                        .selectId = "minecraftVersion",
-                        .labelId = "minecraftVersionLabel",
-                        .label = "Minecraft Version"
-                    },
-                    selectModel = model_.availableMinecraftVersions,
-                    preSelect = preselectMinecraftVersion,
-                    onSelect = [this](int index) {
-                        modPack_.minecraftVersion(model_.availableMinecraftVersions.value()[index].value);
-                    },
-                    selectReference = [this](std::weak_ptr<Dom::BasicElement>&& weak){
-                        minecraftVersionSelect_ = std::move(weak);
-                    }
-                ),
-                
-                LabeledSelect(
-                    {
-                        .boxId = "modLoaderSelect",
-                        .selectId = "modLoader",
-                        .labelId = "modLoaderLabel",
-                        .label = "Mod Loader"
-                    },
-                    selectModel = model_.availableModLoaders,
-                    preSelect = preselectModLoader,
-                    onSelect = [this](int index) {
-                        modPack_.modLoader(model_.availableModLoaders.value()[index].value);
-                    },
-                    selectReference = [this](auto&& weak){
-                        modLoaderSelect_ = std::move(weak);
-                    }
-                )
+            button{
+                type = "button",
+                class_ = "btn btn-primary",
+                id = "packOpenButton",
+                onClick = [this](emscripten::val event) {
+                    FileDialog::showDirectoryDialog({}, [this](std::optional<std::vector<std::filesystem::path>> result) {
+                        if (result)
+                        {
+                            config_.openPack = result.value()[0].string();
+                            saveConfig();
+                            openModPack();
+                        }
+                    });
+                }
+            }("Open")
+        ),
+        // Pack Options
+        div{
+            id = "packOptions"
+        }(
+            LabeledSelect(
+                {
+                    .boxId = "minecraftVersionSelect",
+                    .selectId = "minecraftVersion",
+                    .labelId = "minecraftVersionLabel",
+                    .label = "Minecraft Version"
+                },
+                selectModel = model_.availableMinecraftVersions,
+                preSelect = preselectMinecraftVersion,
+                onSelect = [this](int index) {
+                    modPack_.minecraftVersion(model_.availableMinecraftVersions.value()[index].value);
+                },
+                selectReference = [this](std::weak_ptr<Dom::BasicElement>&& weak){
+                    minecraftVersionSelect_ = std::move(weak);
+                }
             ),
-            packControls(),
-            modTableArea()
-        );
+            
+            LabeledSelect(
+                {
+                    .boxId = "modLoaderSelect",
+                    .selectId = "modLoader",
+                    .labelId = "modLoaderLabel",
+                    .label = "Mod Loader"
+                },
+                selectModel = model_.availableModLoaders,
+                preSelect = preselectModLoader,
+                onSelect = [this](int index) {
+                    modPack_.modLoader(model_.availableModLoaders.value()[index].value);
+                },
+                selectReference = [this](auto&& weak){
+                    modLoaderSelect_ = std::move(weak);
+                }
+            )
+        ),
+        packControls(),
+        modTableArea()
+    );
     // clang-format on
 }
 
@@ -355,7 +382,7 @@ Nui::ElementRenderer MainPage::packControls()
                         return "http://assets/triangle_down.svg";
                     else
                         return "assets://assets/triangle_down.svg";
-                }
+                }()
             }(),
             span{}("Pack Controls")
         ),
@@ -397,6 +424,14 @@ Nui::ElementRenderer MainPage::packControls()
                             return "Reinstall Loader";
                     }
                 })
+            ),
+            button{
+                onClick = [this](){
+                    // TODO: Progress Dialog (in nui?)
+                    // Then update all mods depending on X-RateLimit-Remaining
+                }
+            }(
+                "Check for Updates"
             )
         )
     );
@@ -441,8 +476,12 @@ Nui::ElementRenderer MainPage::modTableArea()
             }(
                 range(model_.searchHits),
                 [this](auto i, auto const& hit) {
+                    std::string className = "mod-search-result";
+                    if (modPack_.findMod(hit.project_id) != nullptr)
+                        className += " mod-search-result-installed";
+
                     return div{
-                        class_ = "mod-search-result",
+                        class_ = className,
                         onClick = [this, hit](emscripten::val event) {
                             event.call<void>("stopPropagation");
                             onSelectSearchedMod(hit);
@@ -497,7 +536,7 @@ Nui::ElementRenderer MainPage::modTable()
                 return "table-cell installed-cell";                            
             };
 
-            return fragment(
+            return tr{}(
                 td{
                     class_ = cellClass()
                 }(
@@ -511,13 +550,29 @@ Nui::ElementRenderer MainPage::modTable()
                             return className;
                         }(),
                         onClick = [this, id = mod.id, isOutdated](){
-                            if (isOutdated) {
-                                showYesNoDialog("Update the mod? This could cause issues.", [this, id](){
-                                    modPack_.installMod(id);
+                            auto findVersion = [this, id](){
+                                // TODO: add checkbox.
+                                bool fuzzy = false;
+                                bool featuredOnly = false;
+                                modPack_.findModVersions(
+                                    id, 
+                                    fuzzy,
+                                    minecraftVersions_, 
+                                    featuredOnly, 
+                                    [this](std::vector<Modrinth::Projects::Version> const& versions){
+                                        lastModVersions_ = versions;
+                                        modPicker_.showModal();
+                                        globalEventContext.executeActiveEventsImmediately();
+                                    }
+                                );
+                            };
+
+                            if (isOutdated)
+                                showYesNoDialog("Update the mod? This could cause issues.", [findVersion](){
+                                    findVersion();
                                 });
-                            }
                             else
-                                modPack_.installMod(id);
+                                findVersion();
                         }
                     },
                     div{

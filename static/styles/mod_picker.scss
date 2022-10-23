@@ -1,0 +1,52 @@
+#modPicker
+{
+    background: $body-bg;
+    color: $body-color;
+    width: 90%;
+}
+#modPicker form {
+    display: flex;
+    flex-direction: column;
+    gap: $gap;
+    align-items: left;
+}
+#modPicker form menu button {
+    min-width: 150px;
+}
+#modPicker form menu {
+    display: flex;
+    gap: $gap;
+    padding: 0px;
+    margin: 0px;
+}
+#pickerTable {
+    border-collapse: collapse;
+    border-spacing: 0;
+    border: 1px solid $light;
+    background-color: $much-darker-bg;
+    color: $body-color;
+    margin: $gap;
+    margin-top: calc($gap * 2);
+    overflow: auto;
+}
+#pickerTable thead {
+    padding: $gap;
+    border-bottom: 1px solid $light;
+}
+#pickerTable thead tr th {
+    padding: $gap;
+    border-right: 1px solid $light;
+    font-weight: bold;
+}
+#pickerTable tbody tr {
+    border-bottom: 1px solid $light;
+}
+#pickerTable tbody tr td {
+    padding: $gap;
+    min-height: 32px;
+    border-right: 1px solid $light;
+    cursor: pointer;
+}
+#pickerTable tbody tr:hover {
+    background-color: $primary-darker;
+}

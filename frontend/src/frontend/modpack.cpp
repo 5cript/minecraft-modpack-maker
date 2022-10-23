@@ -1,5 +1,6 @@
 #include <frontend/modpack.hpp>
 
+#include <frontend/api/http.hpp>
 #include <nui/frontend/api/console.hpp>
 #include <nui/frontend/api/json.hpp>
 #include <nui/frontend/rpc_client.hpp>
@@ -73,7 +74,7 @@ void ModPackManager::open(std::filesystem::path path, std::function<void()> onOp
 //---------------------------------------------------------------------------------------------------------------------
 void ModPackManager::onOpen()
 {
-    std::sort(pack_.mods.begin(), pack_.mods.end(), [](Mod const& a, Mod const& b) {
+    std::sort(pack_.mods.value().begin(), pack_.mods.value().end(), [](Mod const& a, Mod const& b) {
         return a.name < b.name;
     });
     // transform loader to lower
@@ -94,6 +95,19 @@ void ModPackManager::addMod(Mod const& mod)
     pack_.mods.insert(it, mod);
     save();
 }
+//---------------------------------------------------------------------------------------------------------------------
+Mod const* ModPackManager::findMod(std::string const& id)
+{
+    auto it = std::find_if(pack_.mods.cbegin(), pack_.mods.cend(), [&id](Mod const& mod) {
+        return mod.id == id;
+    });
+    if (it == pack_.mods.cend())
+        return nullptr;
+    return &*it;
+}
+//---------------------------------------------------------------------------------------------------------------------
+void ModPackManager::updateNewestVersions()
+{}
 //---------------------------------------------------------------------------------------------------------------------
 void ModPackManager::removeMod(std::string const& id)
 {
@@ -120,9 +134,115 @@ Nui::Observed<std::vector<Mod>> const& ModPackManager::mods() const
     return pack_.mods;
 }
 //---------------------------------------------------------------------------------------------------------------------
-void ModPackManager::installMod(std::string const& id)
+void ModPackManager::findModVersions(
+    std::string const& id,
+    bool fuzzy,
+    std::vector<std::string> const& allMinecraftVersions,
+    bool featuredOnly,
+    std::function<void(std::vector<Modrinth::Projects::Version> const& versions)> onFind)
 {
-    std::cout << "TODO - install: " << id << "\n";
+    std::vector<std::string> includedMinecraftVersions{pack_.minecraftVersion};
+    if (fuzzy)
+    {
+        auto version = MinecraftVersion::fromString(pack_.minecraftVersion);
+        for (auto const& otherVersion : allMinecraftVersions)
+        {
+            if (version.isWithinMinor(MinecraftVersion::fromString(otherVersion)))
+                includedMinecraftVersions.push_back(otherVersion);
+        }
+    }
+
+    Modrinth::Projects::version(
+        id,
+        loaderLowerCase(),
+        includedMinecraftVersions,
+        featuredOnly,
+        [onFind](Http::Response<std::vector<Modrinth::Projects::Version>> const& versionResponse) {
+            if (versionResponse.code == 200 && versionResponse.body)
+            {
+                auto response = *versionResponse.body;
+                std::sort(response.begin(), response.end(), [](auto const& a, auto const& b) {
+                    return emscripten::val::global("compareDates")(a.date_published, b.date_published)
+                        .template as<bool>();
+                });
+                onFind(response);
+            }
+            else
+            {
+                Console::error("Failed to get available versions.");
+            }
+        });
+}
+//---------------------------------------------------------------------------------------------------------------------
+std::string ModPackManager::loaderLowerCase() const
+{
+    std::string loader;
+    std::transform(pack_.modLoader.begin(), pack_.modLoader.end(), std::back_inserter(loader), [](auto c) {
+        return std::tolower(c);
+    });
+    return loader;
+}
+//---------------------------------------------------------------------------------------------------------------------
+void ModPackManager::installMod(Modrinth::Projects::Version const& version)
+{
+    // find primary file:
+    auto it = std::find_if(version.files.begin(), version.files.end(), [](auto const& file) {
+        return file.primary;
+    });
+    if (it == std::end(version.files))
+    {
+        Console::error("Failed to find primary file for mod version");
+        return;
+    }
+
+    // find mod in pack:
+    auto modIt = std::find_if(pack_.mods.cbegin(), pack_.mods.cend(), [&version](auto const& mod) {
+        return mod.id == version.project_id;
+    });
+    if (modIt == std::cend(pack_.mods))
+    {
+        Console::error("Failed to find mod in pack");
+        return;
+    }
+
+    auto onDirCreationDone = [this, version, file = *it, mod = *modIt]() {
+        RpcClient::getRemoteCallableWithBackChannel(
+            "installMod", [this, version, file, mod](emscripten::val installResponse) {
+                if (installResponse["success"].as<bool>())
+                {
+                    auto modIt = std::find_if(pack_.mods.begin(), pack_.mods.end(), [&mod](auto const& m) {
+                        return m->id == mod.id;
+                    });
+                    if (!mod.installedName.empty())
+                    {
+                        modIt->history.push_back({
+                            .name = mod.name,
+                            .id = mod.id,
+                            .slug = mod.slug,
+                            .installedName = mod.installedName,
+                            .installedTimestamp = mod.installedTimestamp,
+                            .installedId = mod.installedId,
+                        });
+                    }
+                    modIt->installedName = file.filename;
+                    modIt->installedTimestamp = version.date_published;
+                    modIt->installedId = version.id;
+                    save();
+                    globalEventContext.executeActiveEventsImmediately();
+                }
+                else
+                {
+                    Console::error("Failed to install mod");
+                }
+            })(openPack_, file.filename, mod.installedName, file.url);
+    };
+
+    // create mods directory
+    RpcClient::getRemoteCallableWithBackChannel("createDirectory", [this, onDirCreationDone](emscripten::val response) {
+        RpcClient::getRemoteCallableWithBackChannel("createDirectory", [onDirCreationDone](emscripten::val response) {
+            onDirCreationDone();
+        })(openPack_ / "server" / "mods");
+    })(openPack_ / "client" / "mods");
 }
 //---------------------------------------------------------------------------------------------------------------------
 Nui::Observed<ModPackManager::LoaderInstallStatus> const& ModPackManager::loaderInstallStatus() const

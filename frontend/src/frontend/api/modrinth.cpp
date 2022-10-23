@@ -125,17 +125,36 @@ namespace Modrinth::Projects
     void
     check(std::string const& idOrSlug, std::function<void(Http::Response<ProjectCheckStub> const&)> const& callback)
     {
-        return commonGetRequest<ProjectCheckStub>(url("/projects/" + idOrSlug + "/check"), callback);
+        return commonGetRequest<ProjectCheckStub>(url("/project/" + idOrSlug + "/check"), callback);
     }
 
     void
     dependencies(std::string const& idOrSlug, std::function<void(Http::Response<Dependencies> const&)> const& callback)
     {
-        return commonGetRequest<Dependencies>(url("/projects/" + idOrSlug + "/dependencies"), callback);
+        return commonGetRequest<Dependencies>(url("/project/" + idOrSlug + "/dependencies"), callback);
     }
 
-    void version(std::string const& idOrSlug, std::function<void(Http::Response<Version> const&)> const& callback)
+    void version(
+        std::string const& idOrSlug,
+        std::string const& loader,
+        std::vector<std::string> const& gameVersions,
+        bool featuredOnly,
+        std::function<void(Http::Response<std::vector<Version>> const&)> const& callback)
     {
-        return commonGetRequest<Version>(url("/projects/" + idOrSlug + "/version"), callback);
+        using namespace std::string_literals;
+
+        std::vector<std::pair<std::string, std::string>> queryParameters;
+        queryParameters.emplace_back("loaders"s, "[\""s + loader + "\"]");
+        std::string gameVersionsString = "[";
+        for (auto const& version : gameVersions)
+            gameVersionsString += "\""s + version + "\",";
+        gameVersionsString.pop_back();
+        gameVersionsString += "]";
+        queryParameters.emplace_back("game_versions"s, gameVersionsString);
+        queryParameters.emplace_back("featured"s, featuredOnly ? "true"s : "false"s);
+
+        const std::string query = assembleQuery(queryParameters);
+        auto fetchOptions = prepareOptions();
+        Http::get<std::vector<Version>>(url("/project/" + idOrSlug + "/version") + query, fetchOptions, callback);
     }
 }

@@ -14,19 +14,25 @@ set(ROAR_ENABLE_NLOHMANN_JSON OFF)
 if (EMSCRIPTEN)
 	# Link frontend of nui inside of emscripten
 	target_link_libraries(minecraft-modpack-maker PRIVATE nui-frontend)
+
+    target_compile_definitions(minecraft-modpack-maker PUBLIC NUI_VAL_CONVERT_ASSERTIONS=1) 
   
 	nui_prepare_emscripten_target(
 		TARGET
 			minecraft-modpack-maker
         PARCEL_ARGS
+            --no-optimize
 		PREJS
 			${CMAKE_CURRENT_SOURCE_DIR}/frontend/src/frontend/js/module.js
 		EMSCRIPTEN_LINK_OPTIONS
-            -O2 -sEXPORTED_FUNCTIONS=_frontendMain
+            -sEXPORTED_FUNCTIONS=_frontendMain
+            -O2
+            # -g
             # or other options, see emscripten docs.
 			#-sALLOW_MEMORY_GROWTH=1 
         EMSCRIPTEN_COMPILE_OPTIONS
             -O3
+            # -g
 	)
   
     add_subdirectory(frontend/src/frontend)
@@ -49,6 +55,7 @@ else()
 		CMAKE_OPTIONS
 			-DNUI_BUILD_EXAMPLES=off -DCMAKE_CXX_EXTENSIONS=on -DCMAKE_CXX_STANDARD=20
             -DCMAKE_BUILD_TYPE=Release
+            #-DCMAKE_BUILD_TYPE=Debug
             #"$<$<CONFIG:DEBUG>:-DCMAKE_BUILD_TYPE=Debug>"
             #"$<$<CONFIG:RELEASE>:-DCMAKE_BUILD_TYPE=Release>"
 		MAKE_OPTIONS

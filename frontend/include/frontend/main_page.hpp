@@ -1,5 +1,6 @@
 #pragma once
 
+#include <frontend/components/mod_picker.hpp>
 #include <frontend/config.hpp>
 #include <frontend/modpack.hpp>
 #include <frontend/page_model.hpp>
@@ -75,4 +76,7 @@ class MainPage
     Nui::ThrottledFunction debouncedSearch_;
     Nui::Observed<std::string> searchFieldValue_;
     Nui::Components::DialogController dialog_;
+    std::vector<std::string> minecraftVersions_;
+    ModPickerController modPicker_;
+    Nui::Observed<std::vector<Modrinth::Projects::Version>> lastModVersions_;
 };
