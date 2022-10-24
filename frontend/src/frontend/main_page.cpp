@@ -109,7 +109,10 @@ void MainPage::updateLatestVersions()
         if (doContinue)
             modUpdateThrottle_();
         else
+        {
+            modPack_.save();
             updateControlLock_ = false;
+        }
         globalEventContext.executeActiveEventsImmediately();
     };
 
@@ -117,7 +120,7 @@ void MainPage::updateLatestVersions()
         modPack_.createVersionUpdateMachine(minecraftVersions_, featuredVersionsOnly_.value(), onSingleUpdateDone);
 
     Nui::throttle(
-        350,
+        0, // FIXME: would not work on windows otherwise. Will break with > 300 mods.
         [updateSingle]() {
             updateSingle();
         },
@@ -522,6 +525,21 @@ Nui::ElementRenderer MainPage::packControls()
                 }
             }(
                 "Deploy"
+            ),
+            button{
+                class_ = observe(updateControlLock_).generate([this](){
+                    if (updateControlLock_.value())
+                        return "btn btn-primary disabled";
+                    return
+                        "btn btn-primary";
+                }),
+                onClick = [this](){
+                    if (updateControlLock_.value())
+                        return;
+                    modPack_.copyExternals();
+                }
+            }(
+                "Copy Externals"
             ),
             // Switches
             div{}

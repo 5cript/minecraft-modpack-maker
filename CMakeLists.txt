@@ -29,7 +29,7 @@ if (EMSCRIPTEN)
             -O2
             # -g
             # or other options, see emscripten docs.
-			#-sALLOW_MEMORY_GROWTH=1 
+			-sALLOW_MEMORY_GROWTH=1 
         EMSCRIPTEN_COMPILE_OPTIONS
             -O3
             # -g

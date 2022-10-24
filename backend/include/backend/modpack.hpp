@@ -22,4 +22,5 @@ class ModPack
         std::string const& url);
     bool removeMod(std::filesystem::path const& basePath, std::string const& name);
     bool deployPack(std::filesystem::path const& packPath);
+    bool copyExternals(std::filesystem::path const& packPath);
 };

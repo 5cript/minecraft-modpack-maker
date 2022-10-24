@@ -124,6 +124,50 @@ ModPack::ModPack(Nui::RpcHub& hub)
                     });
             }
         });
+
+    hub.registerFunction("copyExternals", [&hub, this](std::string const& responseId, std::string const& packPath) {
+        try
+        {
+            if (!copyExternals(packPath))
+            {
+                hub.callRemote(responseId, nlohmann::json{{"success", false}, {"message", "Copy externals failed."}});
+                return;
+            }
+            hub.callRemote(
+                responseId,
+                nlohmann::json{
+                    {"success", true},
+                });
+        }
+        catch (std::exception const& e)
+        {
+            hub.callRemote(
+                responseId,
+                nlohmann::json{
+                    {"success", false},
+                    {"message", e.what()},
+                });
+        }
+    });
+}
+bool ModPack::copyExternals(std::filesystem::path const& packPath)
+{
+    std::filesystem::path externalsPath = packPath / "externals";
+    if (!std::filesystem::exists(externalsPath))
+        return true;
+
+    for (auto const& entry : std::filesystem::directory_iterator(externalsPath))
+    {
+        std::filesystem::copy_file(
+            entry.path(),
+            packPath / "client" / "mods" / entry.path().filename(),
+            std::filesystem::copy_options::overwrite_existing);
+        std::filesystem::copy_file(
+            entry.path(),
+            packPath / "server" / "mods" / entry.path().filename(),
+            std::filesystem::copy_options::overwrite_existing);
+    }
+    return true;
 }
 bool ModPack::removeMod(std::filesystem::path const& basePath, std::string const& name)
 {

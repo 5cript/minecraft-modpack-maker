@@ -89,7 +89,7 @@ namespace Modrinth::Projects
         using namespace std::string_literals;
 
         std::vector<std::pair<std::string, std::string>> queryParameters;
-        queryParameters.emplace_back("query"s, "\""s + options.query + "\"");
+        queryParameters.emplace_back("query"s, options.query);
         std::string facets = serializeFacets(options.facets);
         if (facets != "[]")
             queryParameters.emplace_back("facets"s, facets);

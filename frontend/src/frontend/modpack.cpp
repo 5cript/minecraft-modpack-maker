@@ -139,20 +139,29 @@ void ModPackManager::removeMod(std::string const& id)
     auto it = std::find_if(pack_.mods.begin(), pack_.mods.end(), [&id](Mod const& mod) {
         return mod.id == id;
     });
-    RpcClient::getRemoteCallableWithBackChannel("removeMod", [this, it](emscripten::val response) {
-        if (response["success"].as<bool>())
+
+    if (it != pack_.mods.end())
+    {
+        if (!it->installedName.empty())
         {
-            if (it != pack_.mods.end())
-            {
-                pack_.mods.erase(it);
-                save();
-            }
+            RpcClient::getRemoteCallableWithBackChannel("removeMod", [this, it](emscripten::val response) {
+                if (response["success"].as<bool>())
+                {
+                    pack_.mods.erase(it);
+                    save();
+                }
+                else
+                {
+                    Console::error("Failed to remove mod: ", response["message"]);
+                }
+            })(openPack_.string(), it->installedName);
         }
         else
         {
-            Console::error("Failed to remove mod: ", response["message"]);
+            pack_.mods.erase(it);
+            save();
         }
-    })(openPack_.string(), it->installedName);
+    }
 }
 //---------------------------------------------------------------------------------------------------------------------
 void ModPackManager::save()
@@ -191,16 +200,45 @@ void ModPackManager::findModVersions(
         id,
         loaderLowerCase(),
         includedMinecraftVersions,
-        featuredOnly,
-        [onFind](Http::Response<std::vector<Modrinth::Projects::Version>> const& versionResponse) {
+        true,
+        [id, onFind, featuredOnly, includedMinecraftVersions, loader = loaderLowerCase()](
+            Http::Response<std::vector<Modrinth::Projects::Version>> const& versionResponse) {
             if (versionResponse.code == 200 && versionResponse.body)
             {
-                auto response = *versionResponse.body;
-                std::sort(response.begin(), response.end(), [](auto const& a, auto const& b) {
-                    return emscripten::val::global("compareDates")(a.date_published, b.date_published)
-                        .template as<bool>();
-                });
-                onFind(response);
+                if (!featuredOnly)
+                {
+                    Modrinth::Projects::version(
+                        id,
+                        loader,
+                        includedMinecraftVersions,
+                        false,
+                        [onFind, featured = *versionResponse.body](
+                            Http::Response<std::vector<Modrinth::Projects::Version>> const& versionResponse) {
+                            if (versionResponse.code == 200 && versionResponse.body)
+                            {
+                                auto response = *versionResponse.body;
+                                response.insert(response.end(), featured.begin(), featured.end());
+                                std::sort(response.begin(), response.end(), [](auto const& a, auto const& b) {
+                                    return emscripten::val::global("compareDates")(a.date_published, b.date_published)
+                                        .template as<bool>();
+                                });
+                                onFind(response);
+                            }
+                            else
+                            {
+                                Console::error("Failed to get available versions.");
+                            }
+                        });
+                }
+                else
+                {
+                    auto response = *versionResponse.body;
+                    std::sort(response.begin(), response.end(), [](auto const& a, auto const& b) {
+                        return emscripten::val::global("compareDates")(a.date_published, b.date_published)
+                            .template as<bool>();
+                    });
+                    onFind(response);
+                }
             }
             else
             {
@@ -436,6 +474,16 @@ void ModPackManager::deploy()
         if (!deployResponse["success"].as<bool>())
         {
             Console::error("Failed to deploy mod pack");
+        }
+    })((openPack_).string());
+}
+//---------------------------------------------------------------------------------------------------------------------
+void ModPackManager::copyExternals()
+{
+    RpcClient::getRemoteCallableWithBackChannel("copyExternals", [](emscripten::val copyResponse) {
+        if (!copyResponse["success"].as<bool>())
+        {
+            Console::error("Failed to copy externals");
         }
     })((openPack_).string());
 }

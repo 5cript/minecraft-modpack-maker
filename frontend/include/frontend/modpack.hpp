@@ -114,9 +114,10 @@ class ModPackManager
         bool featuredOnly,
         std::function<void(bool)> onUpdateDone);
     void deploy();
+    void copyExternals();
+    void save();
 
   private:
-    void save();
     std::filesystem::path modpackFile() const;
     void setupAndFixDirectories();
     void setupStartScripts();
