@@ -21,7 +21,7 @@ if (EMSCRIPTEN)
 		TARGET
 			minecraft-modpack-maker
         PARCEL_ARGS
-            --no-optimize
+            # --no-optimize
 		PREJS
 			${CMAKE_CURRENT_SOURCE_DIR}/frontend/src/frontend/js/module.js
 		EMSCRIPTEN_LINK_OPTIONS

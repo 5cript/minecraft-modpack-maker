@@ -1,7 +1,5 @@
 var Module = {
-  onRuntimeInitialized: () => {
-    Module.main();
-  },
+    onRuntimeInitialized: () => {
+        Module.main();
+    },
 };
-
-export default Module;
