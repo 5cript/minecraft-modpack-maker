@@ -20,4 +20,5 @@ class ModPack
         std::string const& name,
         std::string const& previousName,
         std::string const& url);
+    bool deployPack(std::filesystem::path const& packPath);
 };

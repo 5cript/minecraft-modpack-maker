@@ -84,7 +84,11 @@ class MainPage
     Nui::ThrottledFunction modUpdateThrottle_;
 
     // mod version update
-    Nui::Observed<bool> updateControlLock_;
-    Nui::Observed<int> versionsToFetch_;
-    Nui::Observed<int> versionsFetched_;
+    Nui::Observed<bool> updateControlLock_{false};
+    Nui::Observed<int> versionsToFetch_{0};
+    Nui::Observed<int> versionsFetched_{0};
+
+    // switches
+    Nui::Observed<bool> featuredVersionsOnly_{false};
+    Nui::Observed<bool> fuzzyMinecraftVersion_{false};
 };

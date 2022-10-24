@@ -7,6 +7,7 @@
 #include <boost/property_tree/xml_parser.hpp>
 
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <string_view>
 
@@ -169,6 +170,12 @@ bool Fabric::installFabric(std::filesystem::path const& whereTo, std::string con
 
     std::filesystem::rename(whereTo / "server" / "server.jar", whereTo / "server" / "vanilla.jar");
     std::filesystem::rename(whereTo / "server" / "fabric-server-launch.jar", whereTo / "server" / "server.jar");
+
+    {
+        std::ofstream fabricServerProps{
+            whereTo / "server" / "fabric-server-launcher.properties", std::ios_base::binary};
+        fabricServerProps << "serverJar=vanilla.jar";
+    }
 
     return true;
 }

@@ -4,6 +4,7 @@
 #include <nui/frontend/filesystem/file_dialog.hpp>
 
 // Elements
+#include <nui/frontend/elements/a.hpp>
 #include <nui/frontend/elements/body.hpp>
 #include <nui/frontend/elements/button.hpp>
 #include <nui/frontend/elements/div.hpp>
@@ -18,9 +19,11 @@
 #include <nui/frontend/elements/tr.hpp>
 
 // Attributes
+#include <nui/frontend/attributes/checked.hpp>
 #include <nui/frontend/attributes/class.hpp>
 #include <nui/frontend/attributes/col_span.hpp>
 #include <nui/frontend/attributes/for.hpp>
+#include <nui/frontend/attributes/href.hpp>
 #include <nui/frontend/attributes/id.hpp>
 #include <nui/frontend/attributes/max.hpp>
 #include <nui/frontend/attributes/on_click.hpp>
@@ -81,7 +84,7 @@ MainPage::MainPage()
 {
     loadModLoaders();
     loadConfig([this]() {
-        loadMinecraftVersions(false /*TODO: add option somewhere*/);
+        loadMinecraftVersions(false /*TODO: add option somewhere for snapshots */);
     });
 
     Nui::throttle(
@@ -97,9 +100,6 @@ MainPage::MainPage()
 
 void MainPage::updateLatestVersions()
 {
-    // TODO: Progress Dialog (in nui?)
-    // Then update all mods depending on X-RateLimit-Remaining
-
     updateControlLock_ = true;
     versionsToFetch_ = modPack_.mods().value().size();
     versionsFetched_ = 0;
@@ -113,9 +113,8 @@ void MainPage::updateLatestVersions()
         globalEventContext.executeActiveEventsImmediately();
     };
 
-    // TODO: checkbox
-    bool featuredOnly = false;
-    auto updateSingle = modPack_.createVersionUpdateMachine(minecraftVersions_, featuredOnly, onSingleUpdateDone);
+    auto updateSingle =
+        modPack_.createVersionUpdateMachine(minecraftVersions_, featuredVersionsOnly_.value(), onSingleUpdateDone);
 
     Nui::throttle(
         350,
@@ -250,14 +249,11 @@ void MainPage::onSelectSearchedMod(auto const& searchHit)
     if (modPack_.findMod(searchHit.project_id) != nullptr)
         return;
 
-    // TODO: checkbox
-    bool fuzzySearch = false;
-    bool featuredOnly = false;
     modPack_.findModVersions(
         searchHit.project_id,
-        fuzzySearch,
+        fuzzyMinecraftVersion_.value(),
         minecraftVersions_,
-        featuredOnly,
+        featuredVersionsOnly_.value(),
         [this, searchHit](std::vector<Modrinth::Projects::Version> const& versions) {
             auto options = Modrinth::prepareOptions();
             options.followRedirects = true;
@@ -328,6 +324,11 @@ Nui::ElementRenderer MainPage::render()
             lastModVersions_.clear();
             globalEventContext.executeActiveEventsImmediately();
         }),
+
+        // Banner
+        div{
+            id = "banner"
+        }("Powered by Modrinth"),
 
         // Opened Pack
         div{
@@ -488,6 +489,59 @@ Nui::ElementRenderer MainPage::packControls()
                 }
             }(
                 "Check for Updates"
+            ),
+            button{
+                class_ = observe(updateControlLock_).generate([this](){
+                    if (updateControlLock_.value())
+                        return "btn btn-primary disabled";
+                    return
+                        "btn btn-primary";
+                }),
+                onClick = [this](){
+                    if (updateControlLock_.value())
+                        return;
+                    modPack_.deploy();
+                }
+            }(
+                "Deploy"
+            ),
+            // Switches
+            div{}
+            (
+                div{
+                    class_ = "form-check form-switch"
+                }(
+                    input{
+                        class_ = "form-check-input",
+                        type = "checkbox",
+                        id = "flexSwitchCheckDefault",
+                        checked = featuredVersionsOnly_,
+                        onChange = [this](emscripten::val event){
+                            featuredVersionsOnly_.value() = event["target"]["checked"].as<bool>();
+                        }
+                    }(),
+                    label{
+                        class_ = "form-check-label",
+                        for_ = "flexSwitchCheckDefault"
+                    }("Only Featured Mod Versions")
+                ),
+                div{
+                    class_ = "form-check form-switch"
+                }(
+                    input{
+                        class_ = "form-check-input",
+                        type = "checkbox",
+                        id = "flexSwitchCheckDefault",
+                        checked = fuzzyMinecraftVersion_,
+                        onChange = [this](emscripten::val event){
+                            fuzzyMinecraftVersion_.value() = event["target"]["checked"].as<bool>();
+                        }
+                    }(),
+                    label{
+                        class_ = "form-check-label",
+                        for_ = "flexSwitchCheckDefault"
+                    }("Fuzzy Version Matching")
+                )
             )
         )
     );
@@ -612,112 +666,113 @@ Nui::ElementRenderer MainPage::modTable()
     using Nui::Elements::div;
 
     // clang-format off
-    return Table{
-        tableModel = modPack_.mods(),
-        headerRenderer = [](){
-            return tr{}(
-                th{}("Controls"),
-                th{}("Name"),
-                th{}("Installed Date")
-            );
-        },
-        rowRenderer = [this](auto i, auto const& mod) -> Nui::ElementRenderer{
-            const bool isOutdated = compareDates(mod.installedTimestamp, mod.newestTimestamp);
-
-            auto cellClass = [&mod, isOutdated](){
-                if (mod.installedTimestamp.empty())
-                    return "table-cell not-installed-cell";
-                if (isOutdated)
-                    return "table-cell outdated-cell";
-                return "table-cell installed-cell";                            
-            };
-
-            return tr{}(
-                td{
-                    class_ = cellClass()
-                }(
-                    div{
-                        class_ = [](){
-                            std::string className = "install-button";
-                            if (emscripten::val::global("isChrome").as<bool>())
-                                className += " install-button-win";
-                            else
-                                className += " install-button-nix";
-                            return className;
-                        }(),
-                        onClick = [this, id = mod.id, isOutdated](){
-                            auto findVersion = [this, id](){
-                                // TODO: add checkbox.
-                                bool fuzzy = false;
-                                bool featuredOnly = false;
-                                modPack_.findModVersions(
-                                    id, 
-                                    fuzzy,
-                                    minecraftVersions_, 
-                                    featuredOnly, 
-                                    [this](std::vector<Modrinth::Projects::Version> const& versions){
-                                        lastModVersions_ = versions;
-                                        modPicker_.showModal();
-                                        globalEventContext.executeActiveEventsImmediately();
-                                    }
-                                );
-                            };
-
-                            if (isOutdated)
-                                showYesNoDialog("Update the mod? This could cause issues.", [findVersion](){
-                                    findVersion();
-                                });
-                            else
-                                findVersion();
-                        }
-                    },
-                    div{
-                        class_ = [](){
-                            std::string className = "remove-button";
-                            if (emscripten::val::global("isChrome").as<bool>())
-                                className += " remove-button-win";
-                            else
-                                className += " remove-button-nix";
-                            return className;
-                        }(),
-                        onClick = [this, id = mod.id](){
-                            showYesNoDialog("Are you sure you want to remove this mod?", [this, id](){
-                                modPack_.removeMod(id);
-                            });
-                        }
-                    }()
-                ),
-                td{
-                    class_ = cellClass()
-                }(                                
-                    img{
-                        src = mod.logoPng64,
-                        class_ = "table-mod-icon"
-                    }(),
-                    span{}(mod.name)
-                ),
-                td{
-                    class_ = cellClass()
-                }(
-                    [&mod]() -> std::string {
-                        if (mod.installedTimestamp.empty())
-                            return "Not Installed";
-                        return mod.installedTimestamp;
-                    }
-                )
-            );
-        },
-        footerRenderer = []() -> Nui::ElementRenderer{
-            return tr{}(
-                td{
-                    colSpan = 4,
-                    class_ = "footer-cell"
-                }()
-            );
-        }
+    return div{
+        id = "tableBorderBox"
     }(
-        tableAttributes = std::make_tuple(
-            id = "modTable"
+        Table{
+            tableModel = modPack_.mods(),
+            headerRenderer = [](){
+                return tr{}(
+                    th{}("Controls"),
+                    th{}("Name"),
+                    th{}("Installed Date")
+                );
+            },
+            rowRenderer = [this](auto i, auto const& mod) -> Nui::ElementRenderer{
+                const bool isOutdated = compareDates(mod.installedTimestamp, mod.newestTimestamp);
+
+                auto cellClass = [&mod, isOutdated](){
+                    if (mod.installedTimestamp.empty())
+                        return "table-cell not-installed-cell";
+                    if (isOutdated)
+                        return "table-cell outdated-cell";
+                    return "table-cell installed-cell";                            
+                };
+
+                return tr{}(
+                    td{
+                        class_ = cellClass()
+                    }(
+                        div{
+                            class_ = [](){
+                                std::string className = "install-button";
+                                if (emscripten::val::global("isChrome").as<bool>())
+                                    className += " install-button-win";
+                                else
+                                    className += " install-button-nix";
+                                return className;
+                            }(),
+                            onClick = [this, id = mod.id, isOutdated](){
+                                auto findVersion = [this, id](){
+                                    modPack_.findModVersions(
+                                        id, 
+                                        fuzzyMinecraftVersion_.value(),
+                                        minecraftVersions_, 
+                                        featuredVersionsOnly_.value(), 
+                                        [this](std::vector<Modrinth::Projects::Version> const& versions){
+                                            lastModVersions_ = versions;
+                                            modPicker_.showModal();
+                                            globalEventContext.executeActiveEventsImmediately();
+                                        }
+                                    );
+                                };
+
+                                if (isOutdated)
+                                    showYesNoDialog("Update the mod? This could cause issues.", [findVersion](){
+                                        findVersion();
+                                    });
+                                else
+                                    findVersion();
+                            }
+                        },
+                        div{
+                            class_ = [](){
+                                std::string className = "remove-button";
+                                if (emscripten::val::global("isChrome").as<bool>())
+                                    className += " remove-button-win";
+                                else
+                                    className += " remove-button-nix";
+                                return className;
+                            }(),
+                            onClick = [this, id = mod.id](){
+                                showYesNoDialog("Are you sure you want to remove this mod?", [this, id](){
+                                    modPack_.removeMod(id);
+                                });
+                            }
+                        }()
+                    ),
+                    td{
+                        class_ = cellClass()
+                    }(                                
+                        img{
+                            src = mod.logoPng64,
+                            class_ = "table-mod-icon"
+                        }(),
+                        span{}(mod.name)
+                    ),
+                    td{
+                        class_ = cellClass()
+                    }(
+                        [&mod]() -> std::string {
+                            if (mod.installedTimestamp.empty())
+                                return "Not Installed";
+                            return mod.installedTimestamp;
+                        }
+                    )
+                );
+            },
+            footerRenderer = []() -> Nui::ElementRenderer{
+                return tr{}(
+                    td{
+                        colSpan = 4,
+                        class_ = "footer-cell"
+                    }()
+                );
+            }
+        }(
+            tableAttributes = std::make_tuple(
+                id = "modTable"
+            )
         )
     );
     // clang-format on

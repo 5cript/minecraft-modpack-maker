@@ -152,6 +152,7 @@ void ModPackManager::save()
         if (!response["success"].as<bool>())
             Console::error("Failed to save modpack");
     })(modpackFile().string(), JSON::stringify(convertToVal(pack_), 4));
+    writeVersionsFile();
 }
 //---------------------------------------------------------------------------------------------------------------------
 Nui::Observed<std::vector<Mod>> const& ModPackManager::mods() const
@@ -347,11 +348,13 @@ void ModPackManager::setupStartScripts()
     )bat");
     const auto linuxServerStartScript = fixWhitespace(R"sh(
         #!/bin/bash
-        java -jar server/server.jar
+        cd server
+        java -jar server.jar
     )sh");
     const auto windowsServerStartScript = fixWhitespace(R"sh(
         @echo off
-        start "" "java" -jar "server/server.jar"
+        cd server
+        start "" "java" -jar "server.jar"
     )sh");
 
     RpcClient::getRemoteCallableWithBackChannel("writeFile", [](emscripten::val) {})(
@@ -386,8 +389,45 @@ void ModPackManager::minecraftVersion(std::string const& version)
     save();
 }
 //---------------------------------------------------------------------------------------------------------------------
+void ModPackManager::writeVersionsFile()
+{
+    RpcClient::getRemoteCallableWithBackChannel("readFile", [this](emscripten::val response) {
+        if (response["success"].as<bool>())
+        {
+            auto data = response["data"].as<std::string>();
+            auto versions = Nui::JSON::parse(data);
+            versions.set("minecraftVersion", pack_.minecraftVersion);
+            RpcClient::getRemoteCallableWithBackChannel("writeFile", [](emscripten::val response) {
+                if (!response["success"].as<bool>())
+                    Console::error("Failed to write versions file");
+            })((openPack_ / "server" / "versions.json").string(), Nui::JSON::stringify(versions, 4));
+        }
+        else
+        {
+            emscripten::val versions = emscripten::val::object();
+            versions.set("minecraftVersion", pack_.minecraftVersion);
+            // cannot know at this point
+            versions.set("loaderVersion", "");
+            RpcClient::getRemoteCallableWithBackChannel("writeFile", [](emscripten::val response) {
+                if (!response["success"].as<bool>())
+                    Console::error("Failed to write versions file");
+            })((openPack_ / "server" / "versions.json").string(), Nui::JSON::stringify(versions, 4));
+        }
+    })((openPack_ / "server" / "versions.json").string());
+}
+//---------------------------------------------------------------------------------------------------------------------
 std::string ModPackManager::minecraftVersion() const
 {
     return pack_.minecraftVersion;
+}
+//---------------------------------------------------------------------------------------------------------------------
+void ModPackManager::deploy()
+{
+    RpcClient::getRemoteCallableWithBackChannel("deploy", [](emscripten::val deployResponse) {
+        if (!deployResponse["success"].as<bool>())
+        {
+            Console::error("Failed to deploy mod pack");
+        }
+    })((openPack_).string());
 }
 // #####################################################################################################################

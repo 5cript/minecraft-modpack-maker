@@ -113,6 +113,7 @@ class ModPackManager
         std::vector<std::string> minecraftVersions,
         bool featuredOnly,
         std::function<void(bool)> onUpdateDone);
+    void deploy();
 
   private:
     void save();
@@ -122,6 +123,7 @@ class ModPackManager
     void onOpen();
     void updateLoaderInstalledStatus();
     void installLauncher();
+    void writeVersionsFile();
 
   private:
     std::filesystem::path openPack_;

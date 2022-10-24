@@ -63,6 +63,8 @@ else()
 	)
 
 	add_subdirectory(backend/src/backend)
+    add_subdirectory(update_server/src/update_server)
+    add_subdirectory(update_client/src/update_client)
 endif()
 
 set_target_properties(minecraft-modpack-maker PROPERTIES CXX_EXTENSIONS ON)
