@@ -29,7 +29,7 @@ if (EMSCRIPTEN)
             -O2
             # -g
             # or other options, see emscripten docs.
-			-sALLOW_MEMORY_GROWTH=1 
+			-sALLOW_MEMORY_GROWTH=1
         EMSCRIPTEN_COMPILE_OPTIONS
             -O3
             # -g
@@ -59,7 +59,7 @@ else()
             #"$<$<CONFIG:DEBUG>:-DCMAKE_BUILD_TYPE=Debug>"
             #"$<$<CONFIG:RELEASE>:-DCMAKE_BUILD_TYPE=Release>"
 		MAKE_OPTIONS
-			#VERBOSE=1
+			# VERBOSE=1
 	)
 
 	add_subdirectory(backend/src/backend)

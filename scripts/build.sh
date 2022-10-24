@@ -9,7 +9,8 @@ COMPILER=clang++
 CCOMPILER=clang
 LINKER=lld
 THREADS=${nproc}
-BUILD_TYPE=Debug
+#BUILD_TYPE=Debug
+BUILD_TYPE=Release
 
 if [[ ! -z "${MSYSTEM}" ]]; then
   THREADS=1

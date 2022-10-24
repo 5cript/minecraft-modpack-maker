@@ -26,21 +26,35 @@ namespace Http
         Nui::FetchOptions const& options,
         std::function<void(Response<T> const&)> const& callback)
     {
-        fetch(url, options, [callback = std::move(callback), options](Nui::FetchResponse const& response) {
-            Http::Response<T> result;
-            result.code = response.status;
-            if (response.status == 200)
-            {
-                if constexpr (std::is_same_v<T, std::string>)
-                    *result.body = response.body;
+        fetch(
+            url,
+            options,
+            [callback = std::move(callback), options, url](std::optional<Nui::FetchResponse> const& response) {
+                using namespace std::string_literals;
+
+                Http::Response<T> result;
+                if (!response)
+                {
+                    Nui::Console::error("Could not fetch '"s + url + "'");
+                    callback({
+                        .code = 500,
+                        .body = std::nullopt,
+                    });
+                    return;
+                }
+                result.code = response->status;
+                if (response->status == 200)
+                {
+                    if constexpr (std::is_same_v<T, std::string>)
+                        *result.body = response->body;
+                    else
+                        Nui::convertFromVal(Nui::JSON::parse(response->body), result.body);
+                }
+                else if (result.code == 204)
+                    result.body = std::nullopt;
                 else
-                    Nui::convertFromVal(Nui::JSON::parse(response.body), result.body);
-            }
-            else if (result.code == 204)
-                result.body = std::nullopt;
-            else
-                Nui::Console::error("Response is not ok", response.body);
-            callback(result);
-        });
+                    Nui::Console::error("Response is not ok", response->body);
+                callback(result);
+            });
     }
 }

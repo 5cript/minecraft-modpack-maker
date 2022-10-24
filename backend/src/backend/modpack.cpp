@@ -316,6 +316,8 @@ bool ModPack::deployPack(std::filesystem::path const& packPath)
     copyRecursive(client / "Minecraft.exe");
     copyRecursive(client / "versions");
     copyRecursive(client / "launcher_profiles.json");
+    copyRecursive(client / "shaderpacks");
+    copyRecursive(client / "resourcepacks");
     copyRecursive(mcpackdev);
     return true;
 }
