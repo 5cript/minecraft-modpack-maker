@@ -97,6 +97,39 @@ ModPack::ModPack(Nui::RpcHub& hub)
                 });
         }
     });
+
+    hub.registerFunction(
+        "removeMod",
+        [&hub, this](std::string const& responseId, std::string const& packPath, std::string const& modName) {
+            try
+            {
+                if (!removeMod(packPath, modName))
+                {
+                    hub.callRemote(responseId, nlohmann::json{{"success", false}, {"message", "Remove mod failed."}});
+                    return;
+                }
+                hub.callRemote(
+                    responseId,
+                    nlohmann::json{
+                        {"success", true},
+                    });
+            }
+            catch (std::exception const& e)
+            {
+                hub.callRemote(
+                    responseId,
+                    nlohmann::json{
+                        {"success", false},
+                        {"message", e.what()},
+                    });
+            }
+        });
+}
+bool ModPack::removeMod(std::filesystem::path const& basePath, std::string const& name)
+{
+    std::filesystem::remove(basePath / "client" / "mods" / name);
+    std::filesystem::remove(basePath / "server" / "mods" / name);
+    return true;
 }
 bool ModPack::installMod(
     std::filesystem::path const& basePath,
@@ -104,10 +137,12 @@ bool ModPack::installMod(
     std::string const& previousName,
     std::string const& url)
 {
-    std::ofstream writer{basePath / (name + ".Mtemp"), std::ios::binary};
-    auto response = Roar::Curl::Request{}.followRedirects(true).sink(writer).get(url);
-    if (response.code() != boost::beast::http::status::ok)
-        return false;
+    {
+        std::ofstream writer{basePath / (name + ".Mtemp"), std::ios::binary};
+        auto response = Roar::Curl::Request{}.followRedirects(true).sink(writer).get(url);
+        if (response.code() != boost::beast::http::status::ok)
+            return false;
+    }
 
     auto backupModFor = [&](std::string const& clientOrServer) {
         if (!previousName.empty())

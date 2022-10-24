@@ -40,9 +40,8 @@ namespace Modrinth
                     result += ",";
                 result += "[";
                 for (auto const& element : vec)
-                    result += "\""s + name + ":" + element + ",";
+                    result += "\""s + name + ":" + element + "\",";
                 result.pop_back();
-                result += "\"";
                 result += "]";
             };
 
@@ -90,7 +89,7 @@ namespace Modrinth::Projects
         using namespace std::string_literals;
 
         std::vector<std::pair<std::string, std::string>> queryParameters;
-        queryParameters.emplace_back("query"s, options.query);
+        queryParameters.emplace_back("query"s, "\""s + options.query + "\"");
         std::string facets = serializeFacets(options.facets);
         if (facets != "[]")
             queryParameters.emplace_back("facets"s, facets);
@@ -114,6 +113,9 @@ namespace Modrinth::Projects
 
         const std::string query = assembleQuery(queryParameters);
         const auto fetchOptions = prepareOptions();
+
+        std::cout << url("/search") + query << "\n";
+
         Http::get<SearchResult>(url("/search") + query, fetchOptions, callback);
     }
 

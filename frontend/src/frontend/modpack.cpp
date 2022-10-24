@@ -139,11 +139,20 @@ void ModPackManager::removeMod(std::string const& id)
     auto it = std::find_if(pack_.mods.begin(), pack_.mods.end(), [&id](Mod const& mod) {
         return mod.id == id;
     });
-    if (it != pack_.mods.end())
-    {
-        pack_.mods.erase(it);
-        save();
-    }
+    RpcClient::getRemoteCallableWithBackChannel("removeMod", [this, it](emscripten::val response) {
+        if (response["success"].as<bool>())
+        {
+            if (it != pack_.mods.end())
+            {
+                pack_.mods.erase(it);
+                save();
+            }
+        }
+        else
+        {
+            Console::error("Failed to remove mod: ", response["message"]);
+        }
+    })(openPack_.string(), it->installedName);
 }
 //---------------------------------------------------------------------------------------------------------------------
 void ModPackManager::save()

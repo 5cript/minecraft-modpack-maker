@@ -215,13 +215,31 @@ void MainPage::openModPack()
 
 void MainPage::searchMatchingModsImpl()
 {
+    auto versions = std::vector<std::string>{};
+    if (fuzzyMinecraftVersion_.value())
+    {
+        const auto version = MinecraftVersion::fromString(modPack_.minecraftVersion());
+        for (auto const& minecraftVersion : minecraftVersions_)
+        {
+            if (version.isWithinMinor(MinecraftVersion::fromString(minecraftVersion)))
+                versions.push_back(minecraftVersion);
+        }
+    }
+    else
+    {
+        versions.push_back(modPack_.minecraftVersion());
+    }
+
+    std::string loaderLower = modPack_.modLoader();
+    std::transform(std::begin(loaderLower), std::end(loaderLower), std::begin(loaderLower), ::tolower);
+
     Modrinth::Projects::search(
         Modrinth::Projects::SearchOptions{
             .query = searchFieldValue_.value(),
             .facets =
                 {
-                    .versions = std::vector<std::string>{modPack_.minecraftVersion()},
-                    .categories = std::vector<std::string>{modPack_.modLoader()},
+                    .versions = versions,
+                    .categories = std::vector<std::string>{loaderLower},
                     .project_type = std::vector<std::string>{"mod"},
                 },
         },

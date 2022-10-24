@@ -17,5 +17,5 @@ target_compile_options(update-server PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_OPTIO
 
 target_include_directories(update-server PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../../include)
 
-find_package(Boost 1.80.0 REQUIRED COMPONENTS program_options)
-target_link_libraries(update-server PUBLIC roar fmt nlohmann_json Boost::program_options)
+find_package(Boost 1.80.0 REQUIRED COMPONENTS program_options filesystem system)
+target_link_libraries(update-server PUBLIC roar fmt nlohmann_json Boost::program_options Boost::filesystem Boost::system)
