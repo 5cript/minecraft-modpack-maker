@@ -21,7 +21,7 @@ namespace
     constexpr char const* modsDirName = "mods";
 }
 
-//#####################################################################################################################
+// #####################################################################################################################
 UpdateProvider::UpdateProvider(std::filesystem::path const& serverDirectory)
     : serverDirectory_{serverDirectory}
     , localMods_{}
@@ -31,6 +31,7 @@ UpdateProvider::UpdateProvider(std::filesystem::path const& serverDirectory)
 //---------------------------------------------------------------------------------------------------------------------
 void UpdateProvider::loadLocalMods()
 {
+    std::scoped_lock lock{guard_};
     try
     {
         const auto basePath = serverDirectory_;
@@ -38,7 +39,7 @@ void UpdateProvider::loadLocalMods()
 
         localMods_.clear();
         for (; mods != end; ++mods)
-            localMods_.push_back(mods->path());
+            localMods_.push_back({.path = mods->path(), .sha256 = sha256FromFile(mods->path())});
     }
     catch (const std::exception& e)
     {
@@ -59,6 +60,7 @@ std::filesystem::path UpdateProvider::getFilePath(std::string const& name)
 //---------------------------------------------------------------------------------------------------------------------
 void UpdateProvider::backupWorld()
 {
+    std::scoped_lock lock{guard_};
     for (int i = 1; i != 1000; ++i)
     {
         std::filesystem::path worldBackup{serverDirectory_ / ("world_"s + std::to_string(i))};
@@ -131,9 +133,9 @@ bool UpdateProvider::installMods(std::string const& tarFile)
     return true;
 }
 //---------------------------------------------------------------------------------------------------------------------
-UpdateInstructions UpdateProvider::buildDifference(std::vector<UpdateFile> const& remoteFiles)
+UpdateInstructions UpdateProvider::buildDifference(std::vector<ModAndHash> const& remoteFiles)
 {
-    loadLocalMods();
+    std::scoped_lock lock{guard_};
 
     std::set<std::string> remoteSet, localSet;
     std::transform(
@@ -148,7 +150,7 @@ UpdateInstructions UpdateProvider::buildDifference(std::vector<UpdateFile> const
         std::end(localMods_),
         std::inserter(localSet, std::end(localSet)),
         [](auto const& element) {
-            return element.filename().string();
+            return element.path.filename().string();
         });
 
     std::set<std::string> equal;
@@ -172,11 +174,20 @@ UpdateInstructions UpdateProvider::buildDifference(std::vector<UpdateFile> const
         std::end(remoteSet),
         std::inserter(equal, std::end(equal)));
 
+    auto hashOf = [&, this](std::string const& name) {
+        auto it = std::find_if(std::begin(localMods_), std::end(localMods_), [&name](auto const& element) {
+            return element.path.filename().string() == name;
+        });
+        if (it != std::end(localMods_))
+            return it->sha256;
+        return std::string{};
+    };
+
     const auto basePath = serverDirectory_;
     for (auto const& remote : remoteFiles)
     {
         if (equal.find(remote.path.string()) != std::end(equal) && !remote.sha256.empty() &&
-            sha256FromFile(basePath / modsDirName / remote.path.string()) != remote.sha256)
+            hashOf(remote.path.string()) != remote.sha256)
         {
             fresh.push_back(remote.path.string());
             old.push_back(remote.path.string());
@@ -191,15 +202,18 @@ UpdateInstructions UpdateProvider::buildDifference(std::vector<UpdateFile> const
 //---------------------------------------------------------------------------------------------------------------------
 void UpdateProvider::index(Roar::Session& session, Roar::EmptyBodyRequest&& request)
 {
+    std::scoped_lock lock{guard_};
     session.template send<string_body>(request)->status(status::ok).contentType("text/plain").body("Hi").commit();
 }
 //---------------------------------------------------------------------------------------------------------------------
 void UpdateProvider::makeFileDifference(Roar::Session& session, Roar::EmptyBodyRequest&& request)
 {
+    std::scoped_lock lock{guard_};
     session.template read<string_body>(std::move(request))
         ->noBodyLimit()
         .commit()
         .then([this](Roar::Session& session, Roar::Request<string_body> const& req) {
+            std::scoped_lock lock{guard_};
             if (req.body().empty())
             {
                 session.template send<string_body>(req)
@@ -211,11 +225,11 @@ void UpdateProvider::makeFileDifference(Roar::Session& session, Roar::EmptyBodyR
             }
             auto obj = json::parse(req.body());
 
-            std::vector<UpdateFile> files;
+            std::vector<ModAndHash> files;
             for (auto const& mod : obj["mods"])
             {
                 files.push_back(
-                    UpdateFile{.path = mod["name"].get<std::string>(), .sha256 = mod["hash"].get<std::string>()});
+                    ModAndHash{.path = mod["name"].get<std::string>(), .sha256 = mod["hash"].get<std::string>()});
             }
             auto diff = buildDifference(files);
             auto response = "{}"_json;
@@ -231,6 +245,7 @@ void UpdateProvider::makeFileDifference(Roar::Session& session, Roar::EmptyBodyR
 //---------------------------------------------------------------------------------------------------------------------
 void UpdateProvider::downloadMod(Roar::Session& session, Roar::EmptyBodyRequest&& request)
 {
+    std::scoped_lock lock{guard_};
     boost::beast::error_code ec;
     file_body::value_type body;
     auto const& matches = request.pathMatches();
@@ -268,6 +283,7 @@ void UpdateProvider::uploadMods(Roar::Session& session, Roar::EmptyBodyRequest&&
 //---------------------------------------------------------------------------------------------------------------------
 void UpdateProvider::versions(Roar::Session& session, Roar::EmptyBodyRequest&& request)
 {
+    std::scoped_lock lock{guard_};
     boost::beast::error_code ec;
     file_body::value_type body;
     body.open((serverDirectory_ / "versions.json").string().c_str(), boost::beast::file_mode::read, ec);
@@ -282,4 +298,4 @@ void UpdateProvider::versions(Roar::Session& session, Roar::EmptyBodyRequest&& r
     }
     session.template send<file_body>(request)->status(status::ok).contentType(".json").body(std::move(body)).commit();
 }
-//#####################################################################################################################
+// #####################################################################################################################

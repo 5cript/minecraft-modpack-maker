@@ -6,19 +6,20 @@
 #include <boost/describe/class.hpp>
 
 #include <filesystem>
+#include <mutex>
 #include <string>
 #include <vector>
-
-struct UpdateFile
-{
-    std::filesystem::path path;
-    std::string sha256;
-};
 
 struct UpdateInstructions
 {
     std::vector<std::string> download;
     std::vector<std::string> remove;
+};
+
+struct ModAndHash
+{
+    std::filesystem::path path;
+    std::string sha256;
 };
 
 class UpdateProvider
@@ -27,7 +28,7 @@ class UpdateProvider
     UpdateProvider(std::filesystem::path const& serverDirectory);
 
   public:
-    UpdateInstructions buildDifference(std::vector<UpdateFile> const& remoteFiles);
+    UpdateInstructions buildDifference(std::vector<ModAndHash> const& remoteFiles);
     std::filesystem::path getModPath(std::string const& name);
     std::filesystem::path getFilePath(std::string const& name);
     bool installMods(std::string const& tarFile);
@@ -37,8 +38,9 @@ class UpdateProvider
     void loadLocalMods();
 
   private:
+    std::recursive_mutex guard_;
     std::filesystem::path serverDirectory_;
-    std::vector<std::filesystem::path> localMods_;
+    std::vector<ModAndHash> localMods_;
     Minecraft minecraft_;
 
   private:

@@ -23,6 +23,7 @@ target_include_directories(update-client PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../../
 find_package(Boost 1.80.0 REQUIRED COMPONENTS system filesystem)
 
 target_link_libraries(update-client PUBLIC screen dom component roar Boost::filesystem Boost::system ssl crypto fmt)
+nui_set_target_output_directories(update-client)
 
 add_custom_command(TARGET update-client POST_BUILD
   COMMAND bash -c "ldd $<TARGET_FILE:update-client>" | "grep" "clang" | awk "NF == 4 { system(\"cp \" \$3 \" $<TARGET_FILE_DIR:update-client>\") }"
