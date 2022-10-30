@@ -21,11 +21,10 @@ namespace Http
     };
 
     template <typename T>
-    void
-    get(std::string const& url,
-        Nui::FetchOptions const& options,
-        std::function<void(Response<T> const&)> const& callback)
+    void get(std::string const& url, Nui::FetchOptions options, std::function<void(Response<T> const&)> const& callback)
     {
+        options.verifyPeer = false;
+        options.verifyHost = false;
         fetch(
             url,
             options,
@@ -53,7 +52,7 @@ namespace Http
                 else if (result.code == 204)
                     result.body = std::nullopt;
                 else
-                    Nui::Console::error("Response is not ok", response->body);
+                    Nui::Console::error("Response is not ok", result.code, response->body);
                 callback(result);
             });
     }

@@ -120,7 +120,7 @@ void MainPage::updateLatestVersions()
         modPack_.createVersionUpdateMachine(minecraftVersions_, featuredVersionsOnly_.value(), onSingleUpdateDone);
 
     Nui::throttle(
-        0, // FIXME: would not work on windows otherwise. Will break with > 300 mods.
+        750,
         [updateSingle]() {
             updateSingle();
         },
@@ -715,7 +715,7 @@ Nui::ElementRenderer MainPage::modTable()
                 );
             },
             rowRenderer = [this](auto i, auto const& mod) -> Nui::ElementRenderer{
-                const bool isOutdated = compareDates(mod.installedTimestamp, mod.newestTimestamp);
+                const bool isOutdated = compareDates(mod.newestTimestamp, mod.installedTimestamp);
 
                 auto cellClass = [&mod, isOutdated](){
                     if (mod.installedTimestamp.empty())

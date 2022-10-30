@@ -305,7 +305,7 @@ void ModPackManager::installMod(Modrinth::Projects::Version const& version)
                 }
                 else
                 {
-                    Console::error("Failed to install mod");
+                    Console::error("Failed to install mod", installResponse);
                 }
             })(openPack_, file.filename, mod.installedName, file.url);
     };

@@ -183,7 +183,8 @@ bool ModPack::installMod(
 {
     {
         std::ofstream writer{basePath / (name + ".Mtemp"), std::ios::binary};
-        auto response = Roar::Curl::Request{}.followRedirects(true).sink(writer).get(url);
+        auto response =
+            Roar::Curl::Request{}.followRedirects(true).verifyPeer(false).verifyHost(false).sink(writer).get(url);
         if (response.code() != boost::beast::http::status::ok)
             return false;
     }

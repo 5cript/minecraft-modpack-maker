@@ -169,7 +169,7 @@ void UpdateClient::updateMods()
     req.setHeader("Expect", "")
         .source(json{{"mods", loadLocalMods()}}.dump())
         .sink(response)
-        .post(url("/make_file_difference"));
+        .get(url("/make_file_difference"));
     std::cout << "List was obtained.\n";
     UpdateInstructions instructions;
     try

@@ -16,6 +16,6 @@ namespace Minecraft
     void getAllVersions(std::function<void(Http::Response<VersionQueryResponse> const&)> const& callback)
     {
         commonGetRequest<VersionQueryResponse>(
-            "https://launchermeta.mojang.com/mc/game/version_manifest.json", callback);
+            "http://launchermeta.mojang.com/mc/game/version_manifest.json", callback);
     }
 }
