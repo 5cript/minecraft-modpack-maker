@@ -53,12 +53,12 @@ ProgramOptions parseOptions(int argc, char** argv)
         .serverDirectory = std::filesystem::path{argv[0]}.parent_path(),
     };
 
+    std::string serverDirString;
+
     namespace po = boost::program_options;
     po::options_description desc("Allowed options");
     desc.add_options()("help", "produce help message")(
-        "server-directory,s",
-        po::value<std::filesystem::path>(&options.serverDirectory)->required(),
-        "server directory");
+        "server-directory,s", po::value<std::string>(&serverDirString)->required(), "server directory");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -68,5 +68,6 @@ ProgramOptions parseOptions(int argc, char** argv)
         std::exit(0);
     }
     po::notify(vm);
+    options.serverDirectory = serverDirString;
     return options;
 }

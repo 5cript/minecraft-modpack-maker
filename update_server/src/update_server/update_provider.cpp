@@ -27,7 +27,7 @@ UpdateProvider::UpdateProvider(std::filesystem::path const& serverDirectory)
     , localMods_{}
 {
     loadLocalMods();
-    minecraft_.start((serverDirectory / "server.jar").string());
+    // minecraft_.start((serverDirectory / "server.jar").string());
 }
 //---------------------------------------------------------------------------------------------------------------------
 void UpdateProvider::loadLocalMods()
