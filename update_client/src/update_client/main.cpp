@@ -1,4 +1,3 @@
-#include "base_path.hpp"
 #include "config.hpp"
 #include "update_client.hpp"
 
@@ -47,9 +46,11 @@ int main(int argc, char** argv)
              }});
     std::cout << std::endl << "Starting Minecraft\n";
 
+    const auto clientDir = client.getClientDir();
+
     boost::process::child minecraft{
-        "\"" + (getBasePath(selfPath) / clientDirectory / "Minecraft.exe").string() + "\" --workDir \"" +
-            (getBasePath(selfPath) / clientDirectory).string() + "\"",
+        "\"" + (clientDir / "Minecraft.exe").string() + "\" --workDir \"" +
+            (clientDir).string() + "\"",
         boost::process::std_out > stdout,
         boost::process::std_err > stderr,
     };

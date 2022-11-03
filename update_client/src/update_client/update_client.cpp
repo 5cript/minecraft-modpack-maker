@@ -1,5 +1,4 @@
 #include "update_client.hpp"
-#include "base_path.hpp"
 
 #include <nlohmann/json.hpp>
 #include <roar/curl/request.hpp>
@@ -32,6 +31,13 @@ void UpdateClient::performUpdate(Config const& conf, ProgressCallbacks const& cb
     updateMods();
 }
 
+std::filesystem::path UpdateClient::getClientDir() const
+{
+    if (conf_.clientDirectory.empty())
+        return selfDirectory_ / "client";
+    return conf_.clientDirectory;
+}
+
 void UpdateClient::installFabric()
 {
     Roar::Curl::Request req;
@@ -40,8 +46,8 @@ void UpdateClient::installFabric()
     Versions versions;
     if (res.code() != boost::beast::http::status::ok)
     {
-        std::cout << "Could not connect to update server.\n";
-        std::cin.get();
+        std::cout << "Could not load versions from to update server.\n";
+        std::cout << url("/versions") << "\n";
         throw std::runtime_error("Connection failed");
     }
     try
@@ -58,7 +64,7 @@ void UpdateClient::installFabric()
     if ((versions.loaderVersion != conf_.loaderVersion || versions.minecraftVersion != conf_.minecraftVersion) &&
         cbs_.onFabricInstall())
     {
-        const auto clientDir = getBasePath(selfDirectory_) / clientDirectory;
+        const auto clientDir = getClientDir();
 
         std::string metadata;
         Roar::Curl::Request req2;
@@ -124,7 +130,7 @@ void UpdateClient::installFabric()
 
 std::optional<std::filesystem::path> UpdateClient::findJava() const
 {
-    const auto clientDir = getBasePath(selfDirectory_) / clientDirectory;
+    const auto clientDir = getClientDir();
     auto path = clientDir / "runtime";
     if (!std::filesystem::exists(path))
     {
@@ -132,14 +138,8 @@ std::optional<std::filesystem::path> UpdateClient::findJava() const
         return std::nullopt;
     }
     // decends further into the first found directory:
-    path = std::filesystem::directory_iterator
-    {
-        path
-        } -> path();
-    path = std::filesystem::directory_iterator
-    {
-        path
-        } -> path();
+    path = std::filesystem::directory_iterator{path}->path();
+    path = std::filesystem::directory_iterator{path}->path();
     std::filesystem::directory_iterator anyIter{path}, end;
     for (; anyIter != end; ++anyIter)
     {
@@ -192,7 +192,11 @@ std::vector<HashedMod> UpdateClient::loadLocalMods()
 {
     try
     {
-        const auto modsDirectory = getBasePath(selfDirectory_) / clientDirectory / modsDirName;
+        const auto modsDirectory = getClientDir() / "mods";
+        if (!std::filesystem::exists(modsDirectory))
+        {
+            std::cout << "Mods directory does not exist: '" << modsDirectory.string() << "'\n";
+        }
         std::filesystem::directory_iterator mods{modsDirectory}, end;
         std::vector<HashedMod> localMods;
 
@@ -215,14 +219,14 @@ std::vector<HashedMod> UpdateClient::loadLocalMods()
 
 void UpdateClient::removeOldMods(std::vector<std::string> const& removalList)
 {
-    const auto modsDirectory = getBasePath(selfDirectory_) / clientDirectory / modsDirName;
+    const auto modsDirectory = getClientDir() / "mods";
     for (auto const& remove : removalList)
         std::filesystem::remove(modsDirectory / remove);
 }
 
 void UpdateClient::downloadMods(std::vector<std::string> const& downloadList)
 {
-    const auto modsDirectory = getBasePath(selfDirectory_) / clientDirectory / modsDirName;
+    const auto modsDirectory = getClientDir() / "mods";
     cbs_.onDownloadProgress(0, downloadList.size(), "No File");
     int i = 0;
     for (auto const& download : downloadList)

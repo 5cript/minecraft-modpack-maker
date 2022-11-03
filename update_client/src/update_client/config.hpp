@@ -13,6 +13,7 @@ struct Config
     unsigned short updateServerPort = 25002;
     std::string loaderVersion = "";
     std::string minecraftVersion = "";
+    std::string clientDirectory = "";
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
@@ -21,7 +22,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
     updateServerIp,
     updateServerPort,
     loaderVersion,
-    minecraftVersion)
+    minecraftVersion,
+    clientDirectory)
 
 Config loadConfig(std::filesystem::path const& selfDirectory);
 void saveConfig(std::filesystem::path const& selfDirectory, Config const& config);

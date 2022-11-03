@@ -1,5 +1,4 @@
 #include "config.hpp"
-#include "base_path.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -8,7 +7,7 @@ using json = nlohmann::json;
 
 Config loadConfig(std::filesystem::path const& selfDirectory)
 {
-    std::ifstream reader{getBasePath(selfDirectory) / "updater.json", std::ios_base::binary};
+    std::ifstream reader{selfDirectory / "updater.json", std::ios_base::binary};
     if (!reader.good())
         return {};
     try 
@@ -28,7 +27,7 @@ Config loadConfig(std::filesystem::path const& selfDirectory)
 
 void saveConfig(std::filesystem::path const& selfDirectory, Config const& config)
 {
-    std::ofstream writer{getBasePath(selfDirectory) / "updater.json", std::ios_base::binary};
+    std::ofstream writer{selfDirectory / "updater.json", std::ios_base::binary};
     if (!writer.good())
         return;
     json j = config;

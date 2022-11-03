@@ -46,6 +46,7 @@ class UpdateClient
   public:
     UpdateClient(std::filesystem::path selfDirectory, std::string remoteAddress, unsigned short port);
     void performUpdate(Config const& conf, ProgressCallbacks const& cbs);
+    std::filesystem::path getClientDir() const;
 
   private:
     void updateMods();
