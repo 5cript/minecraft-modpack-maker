@@ -181,7 +181,6 @@ void UpdateClient::updateMods()
     UpdateInstructions instructions;
     try
     {
-        std::cout << response << "\n";
         json::parse(response).get_to(instructions);
     }
     catch (std::exception const& exc)

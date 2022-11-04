@@ -209,6 +209,16 @@ void UpdateProvider::index(Roar::Session& session, Roar::EmptyBodyRequest&& requ
 //---------------------------------------------------------------------------------------------------------------------
 void UpdateProvider::makeFileDifference(Roar::Session& session, Roar::EmptyBodyRequest&& request)
 {
+    try 
+    {
+        loadLocalMods();
+    }
+    catch (std::exception const& e)
+    {
+        session.template send<string_body>(request)->status(status::internal_server_error).contentType("text/plain").body(e.what()).commit();
+        return;
+    }
+
     std::scoped_lock lock{guard_};
     session.template read<string_body>(std::move(request))
         ->noBodyLimit()
@@ -224,7 +234,20 @@ void UpdateProvider::makeFileDifference(Roar::Session& session, Roar::EmptyBodyR
                     .commit();
                 return;
             }
-            auto obj = json::parse(req.body());
+            json obj;
+            try 
+            {
+                obj = json::parse(req.body());
+            }
+            catch (std::exception const& e)
+            {
+                session.template send<string_body>(req)
+                    ->status(status::bad_request)
+                    .contentType("text/plain")
+                    .body("Invalid json")
+                    .commit();
+                return;
+            }
 
             std::vector<ModAndHash> files;
             for (auto const& mod : obj["mods"])
@@ -241,6 +264,8 @@ void UpdateProvider::makeFileDifference(Roar::Session& session, Roar::EmptyBodyR
                 .contentType("application/json")
                 .body(response.dump())
                 .commit();
+        }).fail([](auto&& err){
+            fmt::print("Failed to read body: {}\n", err.toString());
         });
 }
 //---------------------------------------------------------------------------------------------------------------------

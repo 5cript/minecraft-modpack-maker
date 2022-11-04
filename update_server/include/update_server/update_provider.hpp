@@ -47,7 +47,7 @@ class UpdateProvider
     ROAR_MAKE_LISTENER(UpdateProvider);
 
     ROAR_GET(index)("/");
-    ROAR_GET(makeFileDifference)("/make_file_difference");
+    ROAR_POST(makeFileDifference)("/make_file_difference");
     ROAR_GET(downloadMod)
     ({
         .path = "/download_mod/(.+)",
