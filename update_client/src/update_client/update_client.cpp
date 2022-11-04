@@ -138,8 +138,14 @@ std::optional<std::filesystem::path> UpdateClient::findJava() const
         return std::nullopt;
     }
     // decends further into the first found directory:
-    path = std::filesystem::directory_iterator{path}->path();
-    path = std::filesystem::directory_iterator{path}->path();
+    path = std::filesystem::directory_iterator
+    {
+        path
+        } -> path();
+    path = std::filesystem::directory_iterator
+    {
+        path
+        } -> path();
     std::filesystem::directory_iterator anyIter{path}, end;
     for (; anyIter != end; ++anyIter)
     {
@@ -169,8 +175,9 @@ void UpdateClient::updateMods()
     req.setHeader("Expect", "")
         .source(json{{"mods", loadLocalMods()}}.dump())
         .sink(response)
-        .get(url("/make_file_difference"));
-    std::cout << "List was obtained.\n";
+        .post(url("/make_file_difference"));
+    std::cout << "List was obtained:\n";
+    std::cout << response << "\n";
     UpdateInstructions instructions;
     try
     {
@@ -193,10 +200,6 @@ std::vector<HashedMod> UpdateClient::loadLocalMods()
     try
     {
         const auto modsDirectory = getClientDir() / "mods";
-        if (!std::filesystem::exists(modsDirectory))
-        {
-            std::cout << "Mods directory does not exist: '" << modsDirectory.string() << "'\n";
-        }
         std::filesystem::directory_iterator mods{modsDirectory}, end;
         std::vector<HashedMod> localMods;
 

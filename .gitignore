@@ -3,3 +3,4 @@ build
 .vscode
 dependencies/Nui
 compile_commands.json
+scripts
