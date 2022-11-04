@@ -2,6 +2,7 @@
 #include <update_server/update_provider.hpp>
 
 #include <boost/beast/http/file_body.hpp>
+#include <roar/url/encode.hpp>
 #include <fmt/ranges.h>
 #include <nlohmann/json.hpp>
 
@@ -15,6 +16,7 @@
 using json = nlohmann::json;
 using namespace boost::beast::http;
 using namespace std::string_literals;
+using namespace std::chrono_literals;
 
 namespace
 {
@@ -275,16 +277,19 @@ void UpdateProvider::downloadMod(Roar::Session& session, Roar::EmptyBodyRequest&
     boost::beast::error_code ec;
     file_body::value_type body;
     auto const& matches = request.pathMatches();
-    if (!matches || matches->size() != 2)
+    // print matches
+    if (!matches || matches->size() != 1)
     {
         session.template send<string_body>(request)
             ->status(status::bad_request)
             .contentType("text/plain")
-            .body("Bad Request")
+            .body(fmt::format("Invalid path: {}", request.target()))
             .commit();
         return;
     }
-    body.open(getModPath((*matches)[1]).string().c_str(), boost::beast::file_mode::read, ec);
+    const auto decoded = Roar::urlDecode((*matches)[0]);
+    const auto modPath = getModPath(decoded);
+    body.open(modPath.c_str(), boost::beast::file_mode::read, ec);
     if (!body.is_open())
     {
         session.template send<string_body>(request)
@@ -294,7 +299,12 @@ void UpdateProvider::downloadMod(Roar::Session& session, Roar::EmptyBodyRequest&
             .commit();
         return;
     }
-    session.template send<file_body>(request)->status(status::ok).contentType(".jar").body(std::move(body)).commit();
+    session.template send<file_body>(request)->status(status::ok).contentType(".jar").body(std::move(body)).commit().then(
+        [keepOpen = session.shared_from_this()](bool wasClosed) {
+            if (!wasClosed)
+                std::this_thread::sleep_for(5s);
+        }
+    );
 }
 //---------------------------------------------------------------------------------------------------------------------
 void UpdateProvider::uploadMods(Roar::Session& session, Roar::EmptyBodyRequest&& request)

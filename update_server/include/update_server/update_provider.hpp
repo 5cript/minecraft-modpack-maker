@@ -50,7 +50,7 @@ class UpdateProvider
     ROAR_POST(makeFileDifference)("/make_file_difference");
     ROAR_GET(downloadMod)
     ({
-        .path = "/download_mod/(.+)",
+        .path = "\\/download_mod\\/(.+)",
         .pathType = Roar::RoutePathType::Regex,
     });
     ROAR_POST(uploadMods)("/upload_mods");
