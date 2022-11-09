@@ -204,6 +204,11 @@ std::vector<HashedMod> UpdateClient::loadLocalMods()
 
         for (; mods != end; ++mods)
         {
+            if (!std::filesystem::is_regular_file(mods->status()))
+            {
+                std::cout << "Unexpected non-file: " << mods->path().string() << "\n";
+                continue;
+            }
             if (conf_.ignoreMods.find(mods->path().filename().string()) == conf_.ignoreMods.end())
                 localMods.push_back(
                     {.path = mods->path(),

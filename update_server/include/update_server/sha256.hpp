@@ -16,7 +16,7 @@
 
     std::ifstream reader{source, std::ios_base::binary};
     if (!reader.good())
-        throw std::runtime_error("Could not open file to generate hash.");
+        throw std::runtime_error("Could not open file to generate hash: " + source.string());
 
     std::string buffer(4096, '\0');
     do
