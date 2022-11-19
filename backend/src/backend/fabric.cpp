@@ -111,7 +111,7 @@ bool Fabric::installFabricInstaller(std::filesystem::path const& whereTo)
     using namespace std::string_literals;
 
     std::stringstream mavenXml{};
-    Roar::Curl::Request{}.followRedirects(true).sink(mavenXml).get(
+    Roar::Curl::Request{}.followRedirects(true).sink(mavenXml).verifyPeer(false).verifyHost(false).get(
         std::string{mainPageBaseUrl} + "/maven-metadata.xml");
     boost::property_tree::ptree tree;
     mavenXml.seekg(0);
@@ -129,14 +129,20 @@ bool Fabric::installFabricInstaller(std::filesystem::path const& whereTo)
     std::string baseName = "fabric-installer-"s + latest;
     Roar::Curl::Request{}
         .followRedirects(true)
+        .verifyPeer(false)
+        .verifyHost(false)
         .sink(whereTo / "mcpackdev" / "fabric-installer.jar")
         .get(std::string{mainPageBaseUrl} + "/" + latest + "/" + (baseName + ".jar"));
     Roar::Curl::Request{}
         .followRedirects(true)
+        .verifyPeer(false)
+        .verifyHost(false)
         .sink(whereTo / "mcpackdev" / "fabric-installer-server.jar")
         .get(std::string{mainPageBaseUrl} + "/" + latest + "/" + (baseName + "-server.jar"));
     Roar::Curl::Request{}
         .followRedirects(true)
+        .verifyPeer(false)
+        .verifyHost(false)
         .sink(whereTo / "mcpackdev" / "fabric-installer-windows.exe")
         .get(std::string{mainPageBaseUrl} + "/" + latest + "/" + (baseName + ".exe"));
     return true;

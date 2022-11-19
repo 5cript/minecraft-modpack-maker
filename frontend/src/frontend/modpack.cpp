@@ -351,7 +351,7 @@ void ModPackManager::installLoader()
         }
         else
         {
-            Console::error("Failed to install loader");
+            Console::error("Failed to install loader", response["message"].as<std::string>());
         }
     })((openPack_).string(), pack_.minecraftVersion);
 }
