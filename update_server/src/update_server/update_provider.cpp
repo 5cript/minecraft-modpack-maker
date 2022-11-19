@@ -2,9 +2,9 @@
 #include <update_server/update_provider.hpp>
 
 #include <boost/beast/http/file_body.hpp>
-#include <roar/url/encode.hpp>
 #include <fmt/ranges.h>
 #include <nlohmann/json.hpp>
+#include <roar/url/encode.hpp>
 
 #include <algorithm>
 #include <filesystem>
@@ -211,13 +211,17 @@ void UpdateProvider::index(Roar::Session& session, Roar::EmptyBodyRequest&& requ
 //---------------------------------------------------------------------------------------------------------------------
 void UpdateProvider::makeFileDifference(Roar::Session& session, Roar::EmptyBodyRequest&& request)
 {
-    try 
+    try
     {
         loadLocalMods();
     }
     catch (std::exception const& e)
     {
-        session.template send<string_body>(request)->status(status::internal_server_error).contentType("text/plain").body(e.what()).commit();
+        session.template send<string_body>(request)
+            ->status(status::internal_server_error)
+            .contentType("text/plain")
+            .body(e.what())
+            .commit();
         return;
     }
 
@@ -237,7 +241,7 @@ void UpdateProvider::makeFileDifference(Roar::Session& session, Roar::EmptyBodyR
                 return;
             }
             json obj;
-            try 
+            try
             {
                 obj = json::parse(req.body());
             }
@@ -266,7 +270,8 @@ void UpdateProvider::makeFileDifference(Roar::Session& session, Roar::EmptyBodyR
                 .contentType("application/json")
                 .body(response.dump())
                 .commit();
-        }).fail([](auto&& err){
+        })
+        .fail([](auto&& err) {
             fmt::print("Failed to read body: {}\n", err.toString());
         });
 }
@@ -289,7 +294,7 @@ void UpdateProvider::downloadMod(Roar::Session& session, Roar::EmptyBodyRequest&
     }
     const auto decoded = Roar::urlDecode((*matches)[0]);
     const auto modPath = getModPath(decoded);
-    body.open(modPath.c_str(), boost::beast::file_mode::read, ec);
+    body.open(modPath.string().c_str(), boost::beast::file_mode::read, ec);
     if (!body.is_open())
     {
         session.template send<string_body>(request)
@@ -299,12 +304,15 @@ void UpdateProvider::downloadMod(Roar::Session& session, Roar::EmptyBodyRequest&
             .commit();
         return;
     }
-    session.template send<file_body>(request)->status(status::ok).contentType(".jar").body(std::move(body)).commit().then(
-        [keepOpen = session.shared_from_this()](bool wasClosed) {
+    session.template send<file_body>(request)
+        ->status(status::ok)
+        .contentType(".jar")
+        .body(std::move(body))
+        .commit()
+        .then([keepOpen = session.shared_from_this()](bool wasClosed) {
             if (!wasClosed)
                 std::this_thread::sleep_for(5s);
-        }
-    );
+        });
 }
 //---------------------------------------------------------------------------------------------------------------------
 void UpdateProvider::uploadMods(Roar::Session& session, Roar::EmptyBodyRequest&& request)
