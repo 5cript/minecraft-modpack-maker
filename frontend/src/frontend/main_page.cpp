@@ -79,6 +79,14 @@ MainPage::MainPage()
                   std::cout << "Dialog opened without attached action!";
               },
       }}
+    , blocker_{DialogController::ConstructionArgs{
+          .className = "page-dialog",
+          .title = "Please Wait",
+          .body = "Please wait while the current action is in progress...",
+          .buttonClassName = "btn btn-primary",
+          .buttonConfiguration = DialogController::ButtonConfiguration::None,
+          .onButtonClicked = [](auto button) {},
+      }}
     , minecraftVersions_{}
     , lastModVersions_{}
 {
@@ -263,6 +271,16 @@ void MainPage::searchMatchingMods()
     debouncedSearch_();
 }
 
+void MainPage::showBlocker(std::string const& body)
+{
+    blocker_.setBody(body);
+    blocker_.showModal();
+}
+void MainPage::hideBlocker()
+{
+    blocker_.hide();
+}
+
 void MainPage::onSelectSearchedMod(auto const& searchHit)
 {
     using namespace std::string_literals;
@@ -339,7 +357,14 @@ Nui::ElementRenderer MainPage::render()
     return body{}(
         // Dialogs
         Dialog(dialog_),
+        Dialog(blocker_),
         modPicker(modPicker_, lastModVersions_, [this](std::optional<Modrinth::Projects::Version> const& picked) {
+            if (customModPickerResultHandler_)
+            {
+                customModPickerResultHandler_(picked);
+                customModPickerResultHandler_ = nullptr;
+                return;
+            }
             if (picked)
                 modPack_.installMod(*picked);
             lastModVersions_.clear();
@@ -347,9 +372,9 @@ Nui::ElementRenderer MainPage::render()
         }),
 
         // Banner
-        div{
-            id = "banner"
-        }("Powered by Modrinth"),
+        // div{
+        //     id = "banner"
+        // }("Powered by Modrinth"),
 
         // Opened Pack
         div{
@@ -401,6 +426,7 @@ Nui::ElementRenderer MainPage::render()
                 preSelect = preselectMinecraftVersion,
                 onSelect = [this](int index) {
                     modPack_.minecraftVersion(model_.availableMinecraftVersions.value()[index].value);
+                    saveConfig();
                 },
                 selectReference = [this](std::weak_ptr<Dom::BasicElement>&& weak){
                     minecraftVersionSelect_ = std::move(weak);
@@ -480,7 +506,11 @@ Nui::ElementRenderer MainPage::packControls()
                 onClick = [this](){
                     if (updateControlLock_.value())
                         return;
-                    modPack_.installLoader();
+                    
+                    showBlocker("Installing loader.");
+                    modPack_.installLoader([this](bool){
+                        hideBlocker();
+                    });
                 }
             }(
                 observe(config_.openPack, modPack_.loaderInstallStatus()).generate([this]() -> std::string {
@@ -521,7 +551,10 @@ Nui::ElementRenderer MainPage::packControls()
                 onClick = [this](){
                     if (updateControlLock_.value())
                         return;
-                    modPack_.deploy();
+                    showBlocker("Deploying pack...");
+                    modPack_.deploy([this](bool){
+                        hideBlocker();
+                    });
                 }
             }(
                 "Deploy"
@@ -536,10 +569,74 @@ Nui::ElementRenderer MainPage::packControls()
                 onClick = [this](){
                     if (updateControlLock_.value())
                         return;
-                    modPack_.copyExternals();
+                    
+                    showBlocker("Copying external mods to folders...");
+                    modPack_.copyExternals([this](bool){
+                        hideBlocker();
+                    });
                 }
             }(
                 "Copy Externals"
+            ),
+            button{
+                class_ = observe(updateControlLock_).generate([this](){
+                    if (updateControlLock_.value())
+                        return "btn btn-warning disabled";
+                    return
+                        "btn btn-warning";
+                }),
+                onClick = [this](){
+                    if (updateControlLock_.value())
+                        return;
+
+                    showYesNoDialog("Reset all installations? This cannot be undone.", [this](){
+                        showBlocker("Waiting for all mods to reset.");
+                        modPack_.resetAllInstalls([this](){
+                            hideBlocker();
+                        });                        
+                    });
+                }
+            }(
+                "Reset All Installs"
+            ),
+            button{
+                class_ = observe(updateControlLock_).generate([this](){
+                    if (updateControlLock_.value())
+                        return "btn btn-primary disabled";
+                    return
+                        "btn btn-primary";
+                }),
+                onClick = [this](){
+                    if (updateControlLock_.value())
+                        return;
+
+                    modPack_.installMissing(
+                        fuzzyMinecraftVersion_.value(),
+                        minecraftVersions_, 
+                        featuredVersionsOnly_.value(), 
+                        [this](
+                            Mod const& mod,
+                            std::vector<Modrinth::Projects::Version> const& versions,
+                            std::function<void(std::optional<Modrinth::Projects::Version> const&)> onSelect
+                        ){
+                            if (versions.size() == 1)
+                            {
+                                onSelect(versions[0]);
+                                return;
+                            }
+
+                            lastModVersions_ = versions;
+                            customModPickerResultHandler_ = [onSelect = std::move(onSelect)](auto const& maybeSelection) {
+                                onSelect(maybeSelection);
+                                if (maybeSelection)
+                                    globalEventContext.executeActiveEventsImmediately();
+                            };
+                            modPicker_.showModal(mod.name);
+                        }
+                    );
+                }
+            }(
+                "Install Missing"
             ),
             // Switches
             div{}
@@ -738,16 +835,16 @@ Nui::ElementRenderer MainPage::modTable()
                                     className += " install-button-nix";
                                 return className;
                             }(),
-                            onClick = [this, id = mod.id, isOutdated](){
-                                auto findVersion = [this, id](){
+                            onClick = [this, id = mod.id, name = mod.name, isOutdated](){
+                                auto findVersion = [this, id, name](){
                                     modPack_.findModVersions(
                                         id, 
                                         fuzzyMinecraftVersion_.value(),
                                         minecraftVersions_, 
                                         featuredVersionsOnly_.value(), 
-                                        [this](std::vector<Modrinth::Projects::Version> const& versions){
+                                        [this, name](std::vector<Modrinth::Projects::Version> const& versions){
                                             lastModVersions_ = versions;
-                                            modPicker_.showModal();
+                                            modPicker_.showModal(name);
                                             globalEventContext.executeActiveEventsImmediately();
                                         }
                                     );

@@ -100,21 +100,32 @@ class ModPackManager
         std::vector<std::string> const& allMinecraftVersions,
         bool featuredOnly,
         std::function<void(std::vector<Modrinth::Projects::Version> const& versions)> onFind);
-    void installMod(Modrinth::Projects::Version const& version);
+    void installMod(
+        Modrinth::Projects::Version const& version,
+        std::function<void(bool)> const& onInstallComplete = [](bool) {});
     std::string modLoader() const;
     void minecraftVersion(std::string const& version);
     std::string minecraftVersion() const;
-    Nui::Observed<std::vector<Mod>> const& mods() const;
+    Nui::Observed<std::vector<Mod>>& mods();
     Nui::Observed<LoaderInstallStatus> const& loaderInstallStatus() const;
-    void installLoader();
+    void installLoader(std::function<void(bool)> onInstallComplete = [](bool) {});
     std::string loaderLowerCase() const;
     Mod const* findMod(std::string const& id);
     std::function<void()> createVersionUpdateMachine(
         std::vector<std::string> minecraftVersions,
         bool featuredOnly,
         std::function<void(bool)> onUpdateDone);
-    void deploy();
-    void copyExternals();
+    void deploy(std::function<void(bool)> onDeployDone = [](bool) {});
+    void copyExternals(std::function<void(bool)> onCopyDone = [](bool) {});
+    void resetAllInstalls(std::function<void()> onResetDone);
+    void installMissing(
+        bool fuzzy,
+        std::vector<std::string> const& allMinecraftVersions,
+        bool featuredOnly,
+        std::function<void(
+            Mod const& mod,
+            std::vector<Modrinth::Projects::Version> const& versions,
+            std::function<void(std::optional<Modrinth::Projects::Version> const&)>)> onFind);
     void save();
 
   private:
@@ -125,6 +136,18 @@ class ModPackManager
     void updateLoaderInstalledStatus();
     void installLauncher();
     void writeVersionsFile();
+    std::vector<Mod>::const_iterator findModIterator(std::string const& projectId);
+    void bumpHistory(Mod& mod);
+    void resetModsRecursive(std::vector<Mod>::iterator iter, std::function<void()> onResetDone);
+    void installMissingRecursive(
+        std::vector<Mod>::iterator iter,
+        bool fuzzy,
+        std::vector<std::string> const& allMinecraftVersions,
+        bool featuredOnly,
+        std::function<void(
+            Mod const& mod,
+            std::vector<Modrinth::Projects::Version> const& versions,
+            std::function<void(std::optional<Modrinth::Projects::Version> const&)>)> onFind);
 
   private:
     std::filesystem::path openPack_;

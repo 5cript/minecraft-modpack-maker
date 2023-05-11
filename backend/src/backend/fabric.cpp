@@ -49,16 +49,18 @@ Fabric::Fabric(Nui::RpcHub& hub)
                         [[maybe_unused]] std::string_view fabricVersion = fileNameView.substr(0, dashPos);
                         std::string_view minecraftVersion = fileNameView.substr(dashPos + 1);
 
-                        if (minecraftVersion != mcVersion)
-                        {
-                            hub.callRemote(responseId, ModLoaderInstallStatus::OutOfDate);
-                            return;
-                        }
-                        else
-                        {
-                            hub.callRemote(responseId, ModLoaderInstallStatus::Installed);
-                            return;
-                        }
+                        // FIXME: Thge installed fabric version is relevant, the mc version is for finding the correct
+                        // fabric version.
+                        // if (minecraftVersion != mcVersion)
+                        // {
+                        //     hub.callRemote(responseId, ModLoaderInstallStatus::OutOfDate);
+                        //     return;
+                        // }
+                        // else
+                        // {
+                        hub.callRemote(responseId, ModLoaderInstallStatus::Installed);
+                        return;
+                        // }
                     }
                     else
                     {

@@ -8,19 +8,23 @@
 #include <nui/frontend/dom/reference.hpp>
 #include <nui/frontend/elements/button.hpp>
 #include <nui/frontend/elements/dialog.hpp>
+#include <nui/frontend/elements/div.hpp>
 #include <nui/frontend/elements/form.hpp>
 #include <nui/frontend/elements/h1.hpp>
 #include <nui/frontend/elements/p.hpp>
+#include <nui/frontend/elements/span.hpp>
 
 #include <iostream>
 
+using namespace std::string_literals;
 using namespace Nui;
 using namespace Nui::Attributes;
 using namespace Nui::Elements;
 using namespace Nui::Components;
 
-void ModPickerController::showModal()
+void ModPickerController::showModal(std::string const& modName)
 {
+    modName_ = modName;
     if (auto dialog = dialog_.lock())
         dialog->val().call<void>("showModal");
 }
@@ -33,12 +37,18 @@ void ModPickerController::close()
     if (auto dialog = dialog_.lock())
         dialog->val().call<void>("close");
 }
+Observed<std::string>& ModPickerController::modName()
+{
+    return modName_;
+}
 
 Nui::ElementRenderer modPicker(
     ModPickerController& controller,
     Observed<std::vector<Modrinth::Projects::Version>> const& modVersions,
     std::function<void(std::optional<Modrinth::Projects::Version> const&)> const& onPick)
 {
+    using Nui::Elements::div;
+
     // clang-format off
     return dialog{
         id = "modPicker"
@@ -54,6 +64,9 @@ Nui::ElementRenderer modPicker(
             ),
             p{}(
                 "Click on one of the table entries or click on cancel."
+            ),
+            p{}(
+                span{}("Mod: "), div{}(controller.modName())
             ),
             Table{
                 tableModel = modVersions,

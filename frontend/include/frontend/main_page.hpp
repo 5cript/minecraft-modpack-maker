@@ -51,6 +51,8 @@ class MainPage
     {
         showYesNoDialog(body, std::forward<T>(onYesAction), []() {});
     }
+    void showBlocker(std::string const& body);
+    void hideBlocker();
 
     void loadMinecraftVersions(bool includeSnapshots);
     void loadModLoaders();
@@ -78,10 +80,12 @@ class MainPage
     Nui::ThrottledFunction debouncedSearch_;
     Nui::Observed<std::string> searchFieldValue_;
     Nui::Components::DialogController dialog_;
+    Nui::Components::DialogController blocker_;
     std::vector<std::string> minecraftVersions_;
     ModPickerController modPicker_;
     Nui::Observed<std::vector<Modrinth::Projects::Version>> lastModVersions_;
     Nui::ThrottledFunction modUpdateThrottle_;
+    std::function<void(std::optional<Modrinth::Projects::Version> const& picked)> customModPickerResultHandler_;
 
     // mod version update
     Nui::Observed<bool> updateControlLock_{false};

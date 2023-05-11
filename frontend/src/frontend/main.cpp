@@ -3,7 +3,7 @@
 #include <nui/frontend/dom/dom.hpp>
 
 extern "C" {
-    void EMSCRIPTEN_KEEPALIVE frontendMain()
+    void frontendMain()
     {
         thread_local MainPage page;
         thread_local Nui::Dom::Dom dom;

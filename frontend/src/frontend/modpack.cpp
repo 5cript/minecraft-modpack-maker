@@ -59,6 +59,7 @@ void ModPackManager::open(std::filesystem::path path, std::function<void()> onOp
         "readFile", [this, onOpenCb = std::move(onOpen)](emscripten::val response) {
             if (response["success"].as<bool>())
             {
+                pack_.mods.clear();
                 convertFromVal<ModPack>(JSON::parse(response["data"]), pack_);
                 this->onOpen();
                 onOpenCb();
@@ -173,7 +174,7 @@ void ModPackManager::save()
     writeVersionsFile();
 }
 //---------------------------------------------------------------------------------------------------------------------
-Nui::Observed<std::vector<Mod>> const& ModPackManager::mods() const
+Nui::Observed<std::vector<Mod>>& ModPackManager::mods()
 {
     return pack_.mods;
 }
@@ -256,7 +257,9 @@ std::string ModPackManager::loaderLowerCase() const
     return loader;
 }
 //---------------------------------------------------------------------------------------------------------------------
-void ModPackManager::installMod(Modrinth::Projects::Version const& version)
+void ModPackManager::installMod(
+    Modrinth::Projects::Version const& version,
+    std::function<void(bool)> const& onInstallComplete)
 {
     // find primary file:
     auto it = std::find_if(version.files.begin(), version.files.end(), [](auto const& file) {
@@ -269,43 +272,31 @@ void ModPackManager::installMod(Modrinth::Projects::Version const& version)
     }
 
     // find mod in pack:
-    auto modIt = std::find_if(pack_.mods.cbegin(), pack_.mods.cend(), [&version](auto const& mod) {
-        return mod.id == version.project_id;
-    });
+    const auto modIt = findModIterator(version.project_id);
     if (modIt == std::cend(pack_.mods))
-    {
-        Console::error("Failed to find mod in pack");
         return;
-    }
 
-    auto onDirCreationDone = [this, version, file = *it, mod = *modIt]() {
+    auto onDirCreationDone = [this, version, file = *it, mod = *modIt, onInstallComplete]() {
         RpcClient::getRemoteCallableWithBackChannel(
-            "installMod", [this, version, file, mod](emscripten::val installResponse) {
+            "installMod", [this, version, file, mod, onInstallComplete](emscripten::val installResponse) {
                 if (installResponse["success"].as<bool>())
                 {
+                    // refind but mutable:
                     auto modIt = std::find_if(pack_.mods.begin(), pack_.mods.end(), [&mod](auto const& m) {
                         return m->id == mod.id;
                     });
-                    if (!mod.installedName.empty())
-                    {
-                        modIt->history.push_back({
-                            .name = mod.name,
-                            .id = mod.id,
-                            .slug = mod.slug,
-                            .installedName = mod.installedName,
-                            .installedTimestamp = mod.installedTimestamp,
-                            .installedId = mod.installedId,
-                        });
-                    }
+                    bumpHistory(*modIt);
                     modIt->installedName = file.filename;
                     modIt->installedTimestamp = version.date_published;
                     modIt->installedId = version.id;
                     save();
                     globalEventContext.executeActiveEventsImmediately();
+                    onInstallComplete(true);
                 }
                 else
                 {
                     Console::error("Failed to install mod", installResponse);
+                    onInstallComplete(false);
                 }
             })(openPack_, file.filename, mod.installedName, file.url);
     };
@@ -316,6 +307,31 @@ void ModPackManager::installMod(Modrinth::Projects::Version const& version)
             onDirCreationDone();
         })(openPack_ / "server" / "mods");
     })(openPack_ / "client" / "mods");
+}
+//---------------------------------------------------------------------------------------------------------------------
+std::vector<Mod>::const_iterator ModPackManager::findModIterator(std::string const& projectId)
+{
+    const auto modIt = std::find_if(pack_.mods.cbegin(), pack_.mods.cend(), [&projectId](auto const& mod) {
+        return mod.id == projectId;
+    });
+    if (modIt == std::cend(pack_.mods))
+        Console::error("Failed to find mod in pack");
+    return modIt;
+}
+//---------------------------------------------------------------------------------------------------------------------
+void ModPackManager::bumpHistory(Mod& mod)
+{
+    if (!mod.installedName.empty())
+    {
+        mod.history.push_back({
+            .name = mod.name,
+            .id = mod.id,
+            .slug = mod.slug,
+            .installedName = mod.installedName,
+            .installedTimestamp = mod.installedTimestamp,
+            .installedId = mod.installedId,
+        });
+    }
 }
 //---------------------------------------------------------------------------------------------------------------------
 Nui::Observed<ModPackManager::LoaderInstallStatus> const& ModPackManager::loaderInstallStatus() const
@@ -333,7 +349,7 @@ void ModPackManager::setupAndFixDirectories()
         (openPack_ / "server").string());
 }
 //---------------------------------------------------------------------------------------------------------------------
-void ModPackManager::installLoader()
+void ModPackManager::installLoader(std::function<void(bool)> onInstallDone)
 {
     std::string remoteCallable;
     if (pack_.modLoader == "Fabric")
@@ -344,16 +360,15 @@ void ModPackManager::installLoader()
         return;
 
     // TODO: show dialog
-    RpcClient::getRemoteCallableWithBackChannel(remoteCallable, [this](emscripten::val response) {
-        if (response["success"].as<bool>())
-        {
-            updateLoaderInstalledStatus();
-        }
-        else
-        {
-            Console::error("Failed to install loader", response["message"].as<std::string>());
-        }
-    })((openPack_).string(), pack_.minecraftVersion);
+    RpcClient::getRemoteCallableWithBackChannel(
+        remoteCallable, [this, onInstallDone = std::move(onInstallDone)](emscripten::val response) {
+            auto success = response["success"].as<bool>();
+            if (success)
+                updateLoaderInstalledStatus();
+            else
+                Console::error("Failed to install loader", response["message"].as<std::string>());
+            onInstallDone(success);
+        })((openPack_).string(), pack_.minecraftVersion);
 }
 //---------------------------------------------------------------------------------------------------------------------
 void ModPackManager::installLauncher()
@@ -379,6 +394,128 @@ void ModPackManager::updateLoaderInstalledStatus()
             globalEventContext.executeActiveEventsImmediately();
         })((openPack_).string(), pack_.minecraftVersion);
     }
+}
+//---------------------------------------------------------------------------------------------------------------------
+void ModPackManager::resetAllInstalls(std::function<void()> onResetDone)
+{
+    resetModsRecursive(std::begin(pack_.mods.value()), std::move(onResetDone));
+}
+//---------------------------------------------------------------------------------------------------------------------
+void ModPackManager::resetModsRecursive(std::vector<Mod>::iterator iter, std::function<void()> onResetDone)
+{
+    Console::info("Resetting mod: ", iter->name);
+    auto recurse = [this, onResetDone = std::move(onResetDone)](auto iter) mutable {
+        ++iter;
+        if (iter != std::end(pack_.mods.value()))
+        {
+            resetModsRecursive(iter, std::move(onResetDone));
+        }
+        else
+        {
+            save();
+            {
+                pack_.mods.modify();
+            }
+            globalEventContext.executeActiveEventsImmediately();
+            onResetDone();
+        }
+    };
+
+    bumpHistory(*iter);
+    if (!iter->installedName.empty())
+    {
+        RpcClient::getRemoteCallableWithBackChannel("removeMod", [recurse, iter](emscripten::val response) mutable {
+            if (response["success"].as<bool>())
+            {
+                iter->installedName.clear();
+                iter->installedTimestamp = "";
+                iter->installedId = "";
+            }
+            else
+            {
+                Console::error("Failed to remove mod: ", response["message"]);
+            }
+            recurse(iter);
+        })(openPack_.string(), iter->installedName);
+    }
+    else
+        recurse(iter);
+}
+//---------------------------------------------------------------------------------------------------------------------
+void ModPackManager::installMissing(
+    bool fuzzy,
+    std::vector<std::string> const& allMinecraftVersions,
+    bool featuredOnly,
+    std::function<void(
+        Mod const& mod,
+        std::vector<Modrinth::Projects::Version> const& versions,
+        std::function<void(std::optional<Modrinth::Projects::Version> const&)>)> onFind)
+{
+    installMissingRecursive(std::begin(pack_.mods.value()), fuzzy, allMinecraftVersions, featuredOnly, onFind);
+}
+//---------------------------------------------------------------------------------------------------------------------
+void ModPackManager::installMissingRecursive(
+    std::vector<Mod>::iterator iter,
+    bool fuzzy,
+    std::vector<std::string> const& allMinecraftVersions,
+    bool featuredOnly,
+    std::function<void(
+        Mod const& mod,
+        std::vector<Modrinth::Projects::Version> const& versions,
+        std::function<void(std::optional<Modrinth::Projects::Version> const&)>)> onFind)
+{
+    auto doSave = [this]() {
+        save();
+        {
+            pack_.mods.modify();
+        }
+        globalEventContext.executeActiveEventsImmediately();
+    };
+
+    // skip already installed mods
+    for (; iter != std::end(pack_.mods.value()) && !iter->installedName.empty(); ++iter)
+    {}
+
+    if (iter == std::end(pack_.mods.value()))
+    {
+        doSave();
+        return;
+    }
+
+    findModVersions(
+        iter->id,
+        fuzzy,
+        allMinecraftVersions,
+        featuredOnly,
+        [this, iter, fuzzy, onFind, featuredOnly, &allMinecraftVersions, doSave](auto const& versions) {
+            onFind(
+                *iter,
+                versions,
+                [this, iter, fuzzy, onFind, featuredOnly, &allMinecraftVersions, doSave](auto const& maybeVersion) {
+                    if (!maybeVersion)
+                    {
+                        Console::error("Bulk installation aborted, no version picked.");
+                        doSave();
+                        return;
+                    }
+
+                    installMod(
+                        *maybeVersion,
+                        [this, iter, fuzzy, onFind, featuredOnly, &allMinecraftVersions, doSave](bool success) mutable {
+                            if (!success)
+                            {
+                                Console::error("Bulk installation aborted, installation failed.");
+                                doSave();
+                                return;
+                            }
+                            ++iter;
+                            if (iter != std::end(pack_.mods.value()))
+                                installMissingRecursive(iter, fuzzy, allMinecraftVersions, featuredOnly, onFind);
+                            else
+                                doSave();
+                        });
+                });
+        });
 }
 //---------------------------------------------------------------------------------------------------------------------
 void ModPackManager::setupStartScripts()
@@ -468,23 +605,25 @@ std::string ModPackManager::minecraftVersion() const
     return pack_.minecraftVersion;
 }
 //---------------------------------------------------------------------------------------------------------------------
-void ModPackManager::deploy()
+void ModPackManager::deploy(std::function<void(bool)> onDeployDone)
 {
-    RpcClient::getRemoteCallableWithBackChannel("deploy", [](emscripten::val deployResponse) {
-        if (!deployResponse["success"].as<bool>())
-        {
-            Console::error("Failed to deploy mod pack");
-        }
-    })((openPack_).string());
+    RpcClient::getRemoteCallableWithBackChannel(
+        "deploy", [onDeployDone = std::move(onDeployDone)](emscripten::val deployResponse) {
+            auto success = deployResponse["success"].as<bool>();
+            if (!success)
+                Console::error("Failed to deploy mod pack");
+            onDeployDone(success);
+        })((openPack_).string());
 }
 //---------------------------------------------------------------------------------------------------------------------
-void ModPackManager::copyExternals()
+void ModPackManager::copyExternals(std::function<void(bool)> onCopyDone)
 {
-    RpcClient::getRemoteCallableWithBackChannel("copyExternals", [](emscripten::val copyResponse) {
-        if (!copyResponse["success"].as<bool>())
-        {
-            Console::error("Failed to copy externals");
-        }
-    })((openPack_).string());
+    RpcClient::getRemoteCallableWithBackChannel(
+        "copyExternals", [onCopyDone = std::move(onCopyDone)](emscripten::val copyResponse) {
+            auto success = copyResponse["success"].as<bool>();
+            if (!success)
+                Console::error("Failed to copy externals");
+            onCopyDone(success);
+        })((openPack_).string());
 }
 // #####################################################################################################################

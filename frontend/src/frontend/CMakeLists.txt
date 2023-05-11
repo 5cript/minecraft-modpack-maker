@@ -12,3 +12,5 @@ target_sources(minecraft-modpack-maker
 
 target_include_directories(minecraft-modpack-maker PRIVATE ${CMAKE_SOURCE_DIR}/backend/include)
 target_include_directories(minecraft-modpack-maker PRIVATE ${CMAKE_SOURCE_DIR}/frontend/include)
+
+target_compile_features(minecraft-modpack-maker PRIVATE cxx_std_23)

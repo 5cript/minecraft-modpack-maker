@@ -10,12 +10,14 @@
 class ModPickerController
 {
   public:
-    void showModal();
+    void showModal(std::string const& modName);
     void setDialog(std::weak_ptr<Nui::Dom::Element> dialog);
     void close();
+    Nui::Observed<std::string>& modName();
 
   private:
     std::weak_ptr<Nui::Dom::Element> dialog_;
+    Nui::Observed<std::string> modName_;
 };
 
 Nui::ElementRenderer modPicker(
