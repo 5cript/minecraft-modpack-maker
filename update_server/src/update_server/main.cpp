@@ -6,7 +6,8 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/thread_pool.hpp>
-#include <boost/program_options.hpp>
+
+#include <cxxopts.hpp>
 
 #include <iostream>
 
@@ -48,26 +49,10 @@ int main(int argc, char** argv)
 
 ProgramOptions parseOptions(int argc, char** argv)
 {
-    ProgramOptions options{
-        // assume "this" directory.
-        .serverDirectory = std::filesystem::path{argv[0]}.parent_path(),
+    cxxopts::Options options("update_server", "Update server for minecraft servers");
+    options.add_options()("s,server-directory", "Server directory", cxxopts::value<std::string>());
+    auto result = options.parse(argc, argv);
+    return ProgramOptions{
+        .serverDirectory = result["server-directory"].as<std::string>(),
     };
-
-    std::string serverDirString;
-
-    namespace po = boost::program_options;
-    po::options_description desc("Allowed options");
-    desc.add_options()("help", "produce help message")(
-        "server-directory,s", po::value<std::string>(&serverDirString)->required(), "server directory");
-
-    po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-    if (vm.count("help"))
-    {
-        std::cout << desc << std::endl;
-        std::exit(0);
-    }
-    po::notify(vm);
-    options.serverDirectory = serverDirString;
-    return options;
 }

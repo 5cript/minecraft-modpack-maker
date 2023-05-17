@@ -1,8 +1,8 @@
 include(FetchContent)
 FetchContent_Declare(
 	ftxui
-	GIT_REPOSITORY https://github.com/5cript/FTXUI.git
-	GIT_TAG        d188a37f134bba3f13b926a7eb7abce4e479468f    
+	GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI.git
+	GIT_TAG        9bfa2416274ef9df67bce920f9d66fcf85d70b05    
 )
 FetchContent_MakeAvailable(ftxui)
 

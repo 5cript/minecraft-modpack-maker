@@ -41,6 +41,7 @@ else()
     target_link_libraries(minecraft-modpack-maker PRIVATE nui-backend roar)
 
     include(cmake/dependencies/libarchive.cmake)
+    include(cmake/dependencies/cxxopts.cmake)
 
     nui_set_target_output_directories(minecraft-modpack-maker)
 
